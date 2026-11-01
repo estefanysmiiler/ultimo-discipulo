@@ -349,7 +349,7 @@ async function activarCodigo(clave) {
 }
 // Al abrir el juego: comprueba en segundo plano que la licencia sigue vigente (solo la quita si el servidor dice que fue revocada)
 async function revalidarLicencia() {
-  if (/[?&]compra=ok/.test(location.search)) abrirCodigo(tt().gracias);
+  if (/[?&]compra=ok/.test(location.search)) { abrirCodigo(tt().gracias); try { history.replaceState(null, "", location.pathname); } catch (e) {} }
   if (!licencia) return;
   try { const { status, d } = await pedir("/validar", { key: licencia.key, act: licencia.act });
     if (status === 403 && d && d.revocada === true) { quitarLicencia(); location.reload(); } } catch (e) {}
