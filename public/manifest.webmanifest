@@ -1,0 +1,18 @@
+{
+  "name": "El Último Discípulo",
+  "short_name": "Último Discípulo",
+  "description": "Un viaje de cuarenta etapas por la Biblia. A forty-stage journey through the Bible.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#2b2140",
+  "theme_color": "#2b2140",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

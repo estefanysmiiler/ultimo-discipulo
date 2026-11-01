@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2b2140">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Último Discípulo">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>El Último Discípulo</title>
+<style>
+  :root { --fondo:#fff4dc; --texto:#2b2140; --boton:#2b2140; --botontexto:#fff4dc; box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --fondo:#1d1830; --texto:#fff4dc; --boton:#fff4dc; --botontexto:#1d1830; } }
+  body { margin:0; background:var(--fondo); color:var(--texto); font-family:Georgia,"Times New Roman",serif;
+    display:flex; flex-direction:column; align-items:center; gap:12px; padding:16px; }
+  html, body { overscroll-behavior:none; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+  #girar { display:none; margin:0; padding:8px 14px; border-radius:10px; background:var(--boton); color:var(--botontexto); font-size:.95rem; text-align:center; }
+  @media (orientation: portrait) and (max-width: 700px) { #girar { display:block; } }
+  canvas { width:100%; max-width:1100px; aspect-ratio:16/9; border-radius:12px; touch-action:none; }
+  .ayuda { margin:0; font-size:1rem; text-align:center; max-width:70ch; }
+  .controles { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  button { -webkit-user-select:none; font:inherit; font-size:1.3rem; padding:14px 26px; border:0; border-radius:10px;
+    background:var(--boton); color:var(--botontexto); touch-action:none; user-select:none; }
+  button:focus-visible { outline:3px solid #e0a000; outline-offset:2px; }
+  /* Móvil en horizontal: el juego ocupa toda la pantalla y los botones se superponen */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body { box-sizing:border-box; padding:6px; gap:0; min-height:100dvh; justify-content:center; }
+    canvas { width:min(100%, calc((100dvh - 12px) * 16 / 9)); }
+    .ayuda { display:none; }
+    .controles { display:contents; }
+    .controles button { position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 12px); padding:12px 20px; font-size:1.15rem; opacity:.5; z-index:5; }
+    .controles button:active { opacity:.85; }
+    #bIzq { left:calc(env(safe-area-inset-left, 0px) + 14px); } #bDer { left:calc(env(safe-area-inset-left, 0px) + 96px); }
+    #bSalto { right:calc(env(safe-area-inset-right, 0px) + 14px); } #bFuego { right:calc(env(safe-area-inset-right, 0px) + 130px); }
+    #bMenu { bottom:auto; top:calc(env(safe-area-inset-top, 0px) + 6px); right:calc(env(safe-area-inset-right, 0px) + 10px); padding:6px 12px; font-size:.85rem; }
+    #controles2 button { bottom:calc(env(safe-area-inset-bottom, 0px) + 78px); padding:8px 14px; font-size:.9rem; }
+    #b2Izq { left:calc(env(safe-area-inset-left, 0px) + 14px); } #b2Der { left:calc(env(safe-area-inset-left, 0px) + 96px); }
+    #b2Salto { right:calc(env(safe-area-inset-right, 0px) + 14px); } #b2Fuego { right:calc(env(safe-area-inset-right, 0px) + 130px); }
+  }
+#codigo[hidden] { display: none; }
+#codigo { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(43,33,64,.88); padding: 12px; }
+#codigo .caja { background: #fff4dc; color: #2b2140; border: 3px solid #6b4426; border-radius: 8px; padding: 18px 20px; width: min(440px, 100%); max-height: 100%; overflow: auto; font-family: Georgia, serif; box-sizing: border-box; }
+#codigo h2 { margin: 0 0 6px; font-size: 22px; }
+#codigo p { margin: 0 0 10px; font-size: 15px; }
+#codigo input { width: 100%; box-sizing: border-box; font-size: 18px; padding: 10px; border: 2px solid #6b4426; border-radius: 6px; font-family: monospace; text-transform: uppercase; background: #fff; color: #2b2140; }
+#codigo #codigoMsg { min-height: 20px; margin: 8px 0; font-weight: bold; }
+#codigo .fila { display: flex; gap: 10px; }
+#codigo button { flex: 1; font-size: 17px; padding: 11px; border-radius: 6px; border: 2px solid #6b4426; background: #ffc400; color: #2b2140; font-weight: bold; font-family: Georgia, serif; cursor: pointer; }
+#codigo button#codigoNo { background: #fff4dc; }
+
+</style>
+</head>
+<body>
+<p id="girar">↻ Gira el teléfono para jugar mejor · Rotate your phone to play</p>
+<canvas id="juego" width="960" height="540" aria-label="Juego El Último Discípulo"></canvas>
+<p class="ayuda">Flechas o A/D para caminar, espacio o ↑ para saltar (mantén para saltar más alto). P pausa, M silencio. Enter continúa. En el menú, ◀ ▶ cambian de personaje; X: habilidad del personaje (honda, arca, trompeta, fuego). Q o el botón Menú vuelven al menú. Dos jugadores: pulsa T en el menú (o toca la franja de arriba). J1 usa flechas, espacio y X; J2 usa A, D, W y S, o los botones J2 que aparecen debajo. En el menú: H activa el modo difícil y G abre la galería de versículos.</p>
+<div class="controles">
+  <button id="bIzq" aria-label="Izquierda">◀</button>
+  <button id="bSalto" aria-label="Saltar">Saltar</button>
+  <button id="bFuego" aria-label="Habilidad">Habilidad</button>
+  <button id="bMenu" aria-label="Menú">Menú</button>
+  <button id="bDer" aria-label="Derecha">▶</button>
+</div>
+<div class="controles" id="controles2" style="display:none">
+  <button id="b2Izq" aria-label="Jugador 2 izquierda">J2 ◀</button>
+  <button id="b2Salto" aria-label="Jugador 2 saltar">J2 Saltar</button>
+  <button id="b2Fuego" aria-label="Jugador 2 habilidad">J2 Habilidad</button>
+  <button id="b2Der" aria-label="Jugador 2 derecha">J2 ▶</button>
+</div>
+
+<script>
+// ============ 1. DATOS DE LOS 5 NIVELES ============
+// segs = tramos de suelo, gap = tamaño de los huecos, dens = enemigos por tramo, fly = probabilidad de enemigo volador
+// 18 niveles que recorren la Biblia, del Génesis al Apocalipsis. pal = cielo1 cielo2 colinas hierba tierra sol
+const nv = (n, segs, gap, dens, fly, pal, deco, vers, cruz) => { const c = pal.split(' ').map(h => '#' + h);
+  return {n, segs, gap, dens, fly, c1:c[0], c2:c[1], col:c[2], tope:c[3], suelo:c[4], sol:c[5], deco, vers, cruz}; };
+// Los niveles 6 a 40 NO están en este archivo: el servidor los entrega al activar la licencia.
+const bloq = n => ({n, bloq:true, segs:6, gap:90, dens:1, fly:0, c1:'#2b2140', c2:'#2b2140', col:'#2b2140', tope:'#2b2140', suelo:'#2b2140', sol:'#2b2140', deco:'montes', vers:[]});
+const NIVELES = [
+  nv('Edén', 6, 90, 1, 0, '8fe0a8 fff3c0 6fc88a 3fae5a 7a5a3a fff0aa', 'arboles', [['Génesis 1:1','En el principio creó Dios los cielos y la tierra.'],['Génesis 1:27','Y creó Dios al hombre a su imagen, a imagen de Dios lo creó.'],['Génesis 1:31','Era bueno en gran manera.']]),
+  nv('El Diluvio', 7, 95, 1, 0, '9ad0f0 ffe9c8 8fb0a8 5aa07a 6a5a4a fff3c0', 'arco', [['Génesis 6:8','Pero Noé halló gracia en los ojos de Jehová.'],['Génesis 7:1','Entra tú y toda tu casa en el arca.'],['Génesis 9:13','Mi arco pondré en las nubes, el cual será por señal de convenio entre mí y la tierra.']]),
+  nv('Babel', 7, 95, 1, 0, '8aa0b8 f0e0c0 a89a8a 8a9a5a 7a6a50 fff0c0', 'ciudad', [['Génesis 11:4','Edifiquémonos una ciudad y una torre, cuya cúspide llegue al cielo.'],['Proverbios 16:18','Antes del quebrantamiento es la soberbia.'],['Salmos 127:1','Si Jehová no edificare la casa, en vano trabajan los que la edifican.']]),
+  nv('La Promesa', 7, 100, 1, 0, '1a1f4a 3b4a8a 2a3560 4a6a8a 3a3a4a ffe9a0', 'estrellas', [['Génesis 15:5','Mira ahora a los cielos, y cuenta las estrellas, si las puedes contar.'],['Génesis 12:2','Y haré de ti una nación grande, y bendecirte he, y engrandeceré tu nombre, y serás bendición.'],['Génesis 22:14','En el monte de Jehová será provisto.']]),
+  nv('Betel', 8, 100, 1, .1, '2a2f5a 7a6a9a 4a4a7a 5a7a5a 4a3a4a ffe9a0', 'estrellas', [['Génesis 28:12','Y soñó, y he aquí una escala que estaba apoyada en tierra, y su cabeza tocaba en el cielo.'],['Génesis 28:15','Y he aquí, yo soy contigo, y te guardaré por donde quiera que fueres, y te volveré a esta tierra.'],['Génesis 28:16','Ciertamente Jehová está en este lugar.']]),
+  bloq('José en Egipto'),
+  bloq('Mar Rojo'),
+  bloq('El Desierto'),
+  bloq('El Sinaí'),
+  bloq('Jericó'),
+  bloq('Gedeón'),
+  bloq('Rut'),
+  bloq('Goliat'),
+  bloq('Los Salmos'),
+  bloq('El Templo'),
+  bloq('Elías'),
+  bloq('Nehemías'),
+  bloq('Babilonia'),
+  bloq('Ester'),
+  bloq('Ezequiel'),
+  bloq('El Gran Pez'),
+  bloq('Belén'),
+  bloq('Bautismo'),
+  bloq('La Tentación'),
+  bloq('Galilea'),
+  bloq('El Monte'),
+  bloq('Panes y Peces'),
+  bloq('Transfiguración'),
+  bloq('Betania'),
+  bloq('Jerusalén'),
+  bloq('Getsemaní'),
+  bloq('La Cruz'),
+  bloq('Tumba Vacía'),
+  bloq('Emaús'),
+  bloq('Pentecostés'),
+  bloq('Filipos'),
+  bloq('Damasco'),
+  bloq('Éfeso'),
+  bloq('Patmos'),
+  bloq('Nueva Jerusalén')
+];
+const ANCHO = 960, ALTO = 540;
+// Versículos especiales que aparecen al derrotar a las tinieblas
+const EXTRA = [["Proverbios 3:5","Fíate de Jehová de todo tu corazón."],["Salmos 27:1","Jehová es mi luz y mi salvación; ¿de quién temeré?"],
+  ["Isaías 40:8","La palabra del Dios nuestro permanece para siempre."],["Romanos 8:28","Y sabemos que a los que a Dios aman, todas las cosas les ayudan a bien, es a saber, a los que conforme al propósito son llamados."],
+  ["Mateo 5:14","Vosotros sois la luz del mundo."],["2 Timoteo 1:7","Porque no nos ha dado Dios el espíritu de temor, sino el de fortaleza, y de amor, y de templanza."],
+  ["Salmos 34:8","Gustad, y ved que es bueno Jehová."],["Mateo 11:28","Venid a mí todos los que estáis trabajados y cargados, que yo os haré descansar."],
+  ["1 Juan 4:19","Nosotros le amamos a él, porque él nos amó primero."],["Proverbios 18:10","Torre fuerte es el nombre de Jehová."],
+  ["Salmos 91:11","Pues que a sus ángeles mandará acerca de ti, que te guarden en todos tus caminos."],["Jeremías 29:11","Pensamientos de paz, y no de mal."],
+  ['Salmos 23:6','El bien y la misericordia me seguirán todos los días de mi vida.'],['Josué 24:15','Que yo y mi casa serviremos a Jehová.'],
+  ['Isaías 26:3','Tú le guardarás en completa paz, cuyo pensamiento en ti persevera.'],['Miqueas 6:8','Solamente hacer juicio, y amar misericordia, y humillarte para andar con tu Dios.'],
+  ['Lamentaciones 3:23','Nuevas son cada mañana; grande es tu fidelidad.'],['Salmos 100:4','Entrad por sus puertas con reconocimiento, por sus atrios con alabanza.'],
+  ['Eclesiastés 3:1','Para todas las cosas hay sazón, y todo lo que se quiere debajo del cielo, tiene su tiempo.'],['Hebreos 11:1','Es pues la fe la sustancia de las cosas que se esperan, la demostración de las cosas que no se ven.'],
+  ['Santiago 1:5','Y si alguno de vosotros tiene falta de sabiduría, demándela a Dios, el cual da a todos abundantemente, y no zahiere.'],['1 Corintios 16:13','Velad, estad firmes en la fe.'],
+  ['Gálatas 6:9','No nos cansemos, pues, de hacer bien.'],['Efesios 2:8','Porque por gracia sois salvos por la fe; y esto no de vosotros, pues es don de Dios.'],
+  ['Mateo 28:20','Yo estoy con vosotros todos los días.'],['Juan 16:33','Confiad, yo he vencido al mundo.'],
+  ['Salmos 118:24','Este es el día que hizo Jehová; nos gozaremos y alegraremos en él.'],['1 Tesalonicenses 5:16','Estad siempre gozosos.']];
+
+// Jefes: cada nivel termina con un adversario de su historia. [nombre, aspecto, color, color de ojos, velocidad]
+const JEFES = {
+  'Edén': ['La Serpiente', 'serpiente', '#3a7a3a', '#ffe14a', 2.6],
+  'El Diluvio': ['El Abismo', 'agua', '#2a5a9a', '#bfe8ff', 2],
+  'Babel': ['El Orgullo', 'sombra', '#4a2a6a', '#ffc400', 2],
+  'La Promesa': ['La Duda', 'sombra', '#3a3a4a', '#9ad0ff', 2],
+  'Betel': ['El Temor', 'sombra', '#2a2a3a', '#ff9a3a', 2.2]
+};
+const jefeDe = L => { const a = JEFES[L.n]; return a ? {n:a[0], tipo:a[1], col:a[2], col2:a[3], vel:a[4]} : {n:'El Gigante de las Tinieblas', tipo:'sombra', col:'#1c1530', col2:'#ff4a3a', vel:2}; };
+const TAM_JEFE = {gigante:[100, 90], dragon:[110, 80], piedra:[80, 80], serpiente:[100, 48], idolo:[80, 70], agua:[90, 60], corona:[70, 64], sombra:[70, 60]};
+
+// ============ 2. GENERADOR DE NIVELES ============
+// Usa una "semilla" fija: cada nivel siempre sale igual, pero no hay que dibujarlo a mano.
+function generar(i) {
+  const L = NIVELES[i]; let s = i*977 + 13;
+  const r = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ s>>>15, 1 | s);
+    t = t + Math.imul(t ^ t>>>7, 61 | t) ^ t; return ((t ^ t>>>14) >>> 0) / 4294967296; };
+  const G = {suelo:[], plat:[], est:[], ene:[], cart:[], meta:0}; let x = 0, v = 0;
+  for (let k = 0; k < L.segs; k++) {
+    const ult = k === L.segs-1, len = k === 0 ? 800 : ult ? 900 : 450 + (r()*300|0);
+    G.suelo.push([x,460,len,80]); G.est.push([x+len/2,420]);
+    const ya = 350 + (r()*40|0), px = (x + 80 + r()*(len-420))|0;      // plataforma flotante
+    G.plat.push([px,ya,140,18]); G.est.push([px+70,ya-35]);
+    if (r() < .6) { G.plat.push([px+190,ya-80,120,18]); G.est.push([px+250,ya-115]); }  // escalón más alto
+    const n = k > 0 ? L.dens + (dificil ? 1 : 0) : 0;
+    for (let j = 0; j < n; j++) {
+      const vu = r() < L.fly;
+      G.ene.push({x:x+30+(len-100)*(j+.5)/n, y:vu?350:432, by:350, w:34, h:28, min:x+20, max:x+len-20,
+        dir:r()<.5?1:-1, vivo:true, vuela:vu, v:dificil ? 1.8 : 1.3});
+    }
+    if (v < L.vers.length && k === 1 + Math.round(v * (L.segs - 3) / (L.vers.length - 1))) G.cart.push([x+50, L.vers[v][0], L.vers[v++][1]]);
+    if (ult) G.meta = x + 650;
+    x += len + L.gap + (r()*20|0);
+  }
+  // Jefe final: el gigante de las tinieblas guarda la meta y necesita varios saltos
+  const J = jefeDe(L), tam = TAM_JEFE[J.tipo] || [70, 60], vida = Math.min(2 + (i>>2), 6) + (J.tipo === 'gigante' || J.tipo === 'dragon' ? 1 : 0) + (dificil ? 2 : 0);
+  G.ene.push({x:G.meta-300, y:460 - tam[1], by:460 - tam[1], w:tam[0], h:tam[1], min:G.meta-450, max:G.meta+120, dir:1, vivo:true, vuela:false, jefe:true,
+    hp:vida, hpMax:vida, flash:0, nombre:J.n, tipo:J.tipo, col:J.col, col2:J.col2, vel:J.vel * (dificil ? 1.2 : 1), atk:120});
+  G.fin = G.meta + 300; return G;
+}
+
+// ============ 3. ESTADO, GUARDADO Y SONIDO ============
+const lienzo = document.getElementById("juego"), ctx = lienzo.getContext("2d");
+// Personajes de la Biblia: cada uno se desbloquea al completar un nivel y tiene una habilidad propia
+const PERSONAJES_ANTIGUOS = [
+  {n:"El Último Discípulo", des:0, tun:"#f1e6d0", cin:"#3a5bd9", cap:"#c9a27a", hab:"Camina hacia la luz"},
+  {n:"David", des:1, tun:"#d9a066", cin:"#8a3a2a", cap:"#7a4a2e", hab:"Honda: pulsa X para lanzar piedras"},
+  {n:"Moisés", des:2, tun:"#6a8fd9", cin:"#f1e6d0", cap:"#e6e0d0", hab:"Vara: doble salto en el aire"},
+  {n:"Jonás", des:3, tun:"#3a9aa0", cin:"#ffc400", cap:"#2f6a72", hab:"Planea: mantén saltar al caer"},
+  {n:"Sansón", des:4, tun:"#c9503a", cin:"#2b2140", cap:"#3a2a1a", hab:"Fuerza: vence al tocar, 4 vidas"}];
+const PERSONAJES = [
+  {n:'El Último Discípulo', des:0, tun:'#f1e6d0', cin:'#3a5bd9', cap:'#c9a27a', hab:'Camina hacia la luz'},
+  {n:'David', des:2, tun:'#d9a066', cin:'#8a3a2a', cap:'#7a4a2e', hab:'Honda: pulsa X para lanzar piedras'},
+  {n:'Noé', des:3, tun:'#8a6a4a', cin:'#3a9aa0', cap:'#e0d0b0', hab:'Arca: pulsa X para un escudo de 3 s'},
+  {n:'Moisés', des:4, tun:'#6a8fd9', cin:'#f1e6d0', cap:'#e6e0d0', hab:'Vara: doble salto en el aire'},
+  {n:'Ester', des:6, tun:'#c04a8a', cin:'#ffc400', cap:'#2b2140', hab:'Gracia: las estrellas valen el doble'},
+  {n:'Sansón', des:8, tun:'#c9503a', cin:'#2b2140', cap:'#3a2a1a', hab:'Fuerza: vence al tocar, 4 vidas'},
+  {n:'Jonás', des:10, tun:'#3a9aa0', cin:'#ffc400', cap:'#2f6a72', hab:'Planea: mantén saltar al caer'},
+  {n:'Gedeón', des:11, tun:'#7a8a5a', cin:'#c9503a', cap:'#8a6a4a', hab:'Trompeta: pulsa X para aturdir enemigos 2 s'},
+  {n:'Daniel', des:12, tun:'#6a4a9a', cin:'#ffc400', cap:'#c9a27a', hab:'Valiente: empieza con 5 vidas'},
+  {n:'Pablo', des:15, tun:'#7a6a5a', cin:'#8a3a2a', cap:'#c9a27a', hab:'Misionero: corre un 25% más rápido'},
+  {n:'Elías', des:16, tun:'#a8603a', cin:'#ff9a3a', cap:'#5a3a2a', hab:'Fuego del cielo: X quema enemigos cercanos'},
+  {n:'María', des:24, tun:'#4a7ac8', cin:'#ffffff', cap:'#e8e0f0', hab:'Fe: una vida extra cada 8 estrellas'}];
+const quien = () => PERSONAJES[Math.min(prog.pj, PERSONAJES.filter(p => p.des <= prog.max).length - 1)];
+// Preguntas bíblicas: después de cada nivel, una pregunta al azar. Formato: [pregunta, [3 opciones], índice de la correcta]
+const PREGUNTAS = [
+  ['¿Quién construyó el arca?', ['Abraham', 'Noé', 'Moisés'], 1],
+  ['¿A quién venció David con una honda?', ['A Saúl', 'A Sansón', 'A Goliat'], 2],
+  ['¿Qué mar abrió Moisés?', ['El Mar Muerto', 'El Mar Rojo', 'El Mar de Galilea'], 1],
+  ['¿Dónde nació Jesús?', ['Nazaret', 'Jerusalén', 'Belén'], 2],
+  ['¿Cuántos días llovió en el diluvio?', ['100', '40', '7'], 1],
+  ['¿Quién fue tragado por un gran pez?', ['Elías', 'Jonás', 'Daniel'], 1],
+  ['¿Cuál es el primer libro de la Biblia?', ['Éxodo', 'Salmos', 'Génesis'], 2],
+  ['¿Quién guio al pueblo en Jericó?', ['Gedeón', 'David', 'Josué'], 2],
+  ['¿Cuántos discípulos eligió Jesús?', ['7', '12', '10'], 1],
+  ['¿Quién fue echado al foso de los leones?', ['José', 'Pablo', 'Daniel'], 2],
+  ['¿Qué salmo dice: Jehová es mi pastor?', ['Salmo 1', 'Salmo 23', 'Salmo 91'], 1],
+  ['¿Cuántos mandamientos recibió Moisés?', ['12', '5', '10'], 2],
+  ['¿A quién vendieron sus hermanos?', ['A Benjamín', 'A José', 'A Judá'], 1],
+  ['¿Qué tenía el muchacho de Juan 6?', ['7 panes y 3 peces', '12 panes', '5 panes y 2 peces'], 2],
+  ['¿Cuándo resucitó Jesús?', ['Al día cuarenta', 'Al tercer día', 'Al séptimo día'], 1],
+  ['¿Cuál es el último libro de la Biblia?', ['Hechos', 'Apocalipsis', 'Judas'], 1],
+  ['¿Cuántos hijos tuvo Jacob?', ['Siete', 'Doce', 'Diez'], 1],
+  ['¿Quién fue el primer rey de Israel?', ['David', 'Saúl', 'Salomón'], 1],
+  ['¿Qué rey construyó el templo?', ['David', 'Ezequías', 'Salomón'], 2],
+  ['¿Quién interpretó los sueños del faraón?', ['Daniel', 'José', 'Moisés'], 1],
+  ['¿De qué animales era pastor David?', ['De cabras', 'De bueyes', 'De ovejas'], 2],
+  ['¿Cómo se llamaba la esposa de Abraham?', ['Rebeca', 'Sara', 'Raquel'], 1],
+  ['¿Quién traicionó a Jesús?', ['Pedro', 'Judas Iscariote', 'Tomás'], 1],
+  ['¿Quién negó a Jesús tres veces?', ['Juan', 'Andrés', 'Pedro'], 2],
+  ['¿Qué apóstol dudó de la resurrección?', ['Mateo', 'Tomás', 'Felipe'], 1],
+  ['¿En qué lugar fue bautizado Jesús?', ['En el Nilo', 'En el mar Rojo', 'En el río Jordán'], 2],
+  ['¿Cuál fue el primer milagro de Jesús?', ['Caminar sobre el agua', 'Agua en vino', 'Sanar a un ciego'], 1],
+  ['¿Quién escribió muchos salmos?', ['Pablo', 'Moisés', 'David'], 2],
+  ['¿Cuántos libros tiene la Biblia?', ['66', '39', '73'], 0],
+  ['¿Quién era el hombre más fuerte?', ['Goliat', 'Gedeón', 'Sansón'], 2],
+  ['¿Qué ave llevó una rama a Noé?', ['Un águila', 'Una paloma', 'Un cuervo'], 1],
+  ['¿Cuántos días estuvo Jonás en el pez?', ['Siete', 'Cuarenta', 'Tres'], 2],
+  ['¿En qué monte recibió Moisés la ley?', ['Carmelo', 'Sinaí', 'Sion'], 1],
+  ['¿Quién fue la madre de Samuel?', ['Sara', 'Ester', 'Ana'], 2],
+  ['¿Qué reina salvó a su pueblo en Persia?', ['Rut', 'Ester', 'Débora'], 1],
+  ['¿Cómo se llamaba la suegra de Rut?', ['Ana', 'Elisabet', 'Noemí'], 2],
+  ['¿A qué ciudad fue enviado Jonás?', ['Babilonia', 'Nínive', 'Tiro'], 1],
+  ['¿Quién fue el apóstol de los gentiles?', ['Pedro', 'Santiago', 'Pablo'], 2],
+  ['¿Qué llenó a los discípulos en Pentecostés?', ['Pan del cielo', 'El Espíritu Santo', 'Una estrella'], 1],
+  ['¿Cuántos libros tiene el Nuevo Testamento?', ['39', '27', '30'], 1],
+  ['¿Qué hizo Dios en el séptimo día?', ['Creó al hombre', 'Envió el diluvio', 'Descansó'], 2]];
+// Saca las preguntas en orden aleatorio y no repite ninguna hasta haberlas usado todas
+let pregBolsa = [];
+function sigPreg() {
+  if (!pregBolsa.length) pregBolsa = PREGUNTAS.map((_, i) => i).sort(() => Math.random() - .5);
+  const q = PREGUNTAS[pregBolsa.pop()];
+  const op = q[1].map((t, i) => [t, i === q[2], Math.random()]).sort((a, b) => a[2] - b[2]);   // mezcla las opciones
+  return [q[0], op.map(o => o[0]), op.findIndex(o => o[1])];
+}
+function responder(k) {
+  const ok = k === preg[2];
+  if (ok) { puntos += 100; mejorar(); guardar(); }
+  msgPreg = ok ? '¡Correcto! +100 estrellas' : 'La respuesta era: ' + preg[1][preg[2]];
+  estado = 'nivelok'; melodia(ok ? [784, 988, 1175] : [330, 262]);
+}
+function cambiarPag(d) { const n = Math.ceil(NIVELES.length / 18); pagMenu = ((pagMenu + d) % n + n) % n; tono(500, .08, 'triangle', .05); }
+function cambiarPj(d) { const k = PERSONAJES.filter(p => p.des <= prog.max).length; prog.pj = ((Math.min(prog.pj, k-1) + d) % k + k) % k; guardar(); tono(600, .08, "triangle", .05); }
+// ===== MODO DEMO (solo este archivo; el juego completo no lo contiene) =====
+// ===== TIENDA: demo gratuita + juego completo con licencia =====
+// Cambia estas dos líneas con tus datos de Polar (ver LEEME):
+const TIENDA = { compra: "REEMPLAZA_CON_TU_ENLACE_DE_PAGO_DE_POLAR", api: "/api" };
+let DEMO = true; const DEMO_NIVELES = 5, CLAVE = "peregrino_tienda";
+let licencia = null;
+try { licencia = JSON.parse(localStorage.getItem("peregrino_licencia") || "null"); } catch (e) {}
+function aplicarDatosPago(d) {
+  d.niveles.forEach((L, k) => { NIVELES[DEMO_NIVELES + k] = L; });
+  Object.assign(JEFES, d.jefes);
+  DEMO = false;
+}
+if (licencia && licencia.datos && licencia.datos.niveles && licencia.datos.niveles.length === NIVELES.length - DEMO_NIVELES) aplicarDatosPago(licencia.datos); else licencia = null;
+const nivelPermitido = i => !DEMO || i < DEMO_NIVELES;
+const LIMITE = () => (DEMO ? DEMO_NIVELES : NIVELES.length) - 1;
+let prog = {max:0, mejor:0, pj:0, vers:[], dif:[], mejorDif:0};
+try { Object.assign(prog, JSON.parse(localStorage.getItem(CLAVE) || "{}")); } catch (e) {}
+// Partidas guardadas antes de la galería y del modo difícil no tienen estos datos
+if (!Array.isArray(prog.vers)) prog.vers = [];
+prog.max = Math.min(Math.max(0, +prog.max || 0), LIMITE());
+if (!prog.v2) { prog.pj = Math.max(0, (+prog.pj || 0) - 1); prog.v2 = true; }
+if (!Array.isArray(prog.dif)) prog.dif = [];
+if (typeof prog.mejorDif !== 'number') prog.mejorDif = 0;
+// ----- Compra y licencia -----
+let codigoAbierto = false;
+const TXT_TIENDA = {
+  es: { titulo: "Introduce tu código", ayuda: "Lo recibiste por correo al pagar. Cópialo y pégalo aquí.", activar: "Activar", cancelar: "Cancelar", ph: "Código de licencia",
+    comprobando: "Comprobando…", ok: "¡Listo! Ya tienes el juego completo.", vacio: "Escribe tu código.", no_valido: "Ese código no es válido. Revísalo o escribe a soporte.",
+    limite: "Este código ya está activo en el máximo de dispositivos.", servidor: "No pudimos comprobarlo ahora. Inténtalo de nuevo en un momento.", red: "Sin conexión. Conéctate a internet para activar el código.",
+    sinTienda: "La compra todavía no está configurada.", gracias: "¡Gracias por tu compra! Pega aquí el código que te llegó por correo." },
+  en: { titulo: "Enter your code", ayuda: "You received it by email when you paid. Copy and paste it here.", activar: "Activate", cancelar: "Cancel", ph: "License code",
+    comprobando: "Checking…", ok: "Done! You now have the full game.", vacio: "Type your code.", no_valido: "That code is not valid. Check it or contact support.",
+    limite: "This code is already active on the maximum number of devices.", servidor: "We couldn't check it right now. Please try again in a moment.", red: "No connection. Connect to the internet to activate the code.",
+    sinTienda: "Purchasing is not set up yet.", gracias: "Thank you for your purchase! Paste the code we emailed you here." }
+};
+const tt = () => TXT_TIENDA[typeof idioma !== "undefined" && idioma === "en" ? "en" : "es"];
+function idDispositivo() {
+  try { let d = localStorage.getItem("peregrino_dispositivo"); if (d) return d;
+    const a = new Uint8Array(8); (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach((_, i) => a[i] = Math.random() * 256);
+    d = Array.from(a, b => b.toString(16).padStart(2, "0")).join(""); localStorage.setItem("peregrino_dispositivo", d); return d; } catch (e) { return "sin-id"; }
+}
+function comprar() {
+  if (!TIENDA.compra || TIENDA.compra.indexOf("REEMPLAZA") === 0) { abrirCodigo(tt().sinTienda); return; }
+  try { window.open(TIENDA.compra, "_blank", "noopener"); } catch (e) { location.href = TIENDA.compra; }
+}
+function abrirCodigo(aviso) {
+  const el = document.getElementById("codigo"); if (!el) return;
+  const t = tt();
+  document.getElementById("codigoT").textContent = t.titulo; document.getElementById("codigoAyuda").textContent = t.ayuda;
+  document.getElementById("codigoOk").textContent = t.activar; document.getElementById("codigoNo").textContent = t.cancelar;
+  const inp = document.getElementById("codigoIn"); inp.placeholder = t.ph; inp.value = "";
+  document.getElementById("codigoMsg").textContent = aviso || "";
+  teclas.izq = teclas.der = teclas.salto = teclas.fuego = false;
+  codigoAbierto = true; el.hidden = false; setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+}
+function cerrarCodigo() { codigoAbierto = false; const el = document.getElementById("codigo"); if (el) el.hidden = true; }
+async function pedir(ruta, cuerpo) {
+  const ctl = new AbortController(), id = setTimeout(() => ctl.abort(), 20000);
+  try { const r = await fetch(TIENDA.api + ruta, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo), signal: ctl.signal });
+    let d = {}; try { d = await r.json(); } catch (e) {}
+    return { status: r.status, d }; } finally { clearTimeout(id); }
+}
+function aplicarPago(d) {
+  aplicarDatosPago(d); Object.assign(EN, d.en || {}); todosLosVers = calcVers();
+  if (prog.demoFin) { prog.max = Math.max(prog.max, DEMO_NIVELES); delete prog.demoFin; }
+  guardar();
+  if (estado === "fin" || estado === "menu") { estado = "menu"; menuVisto = false; }
+}
+function quitarLicencia() { try { localStorage.removeItem("peregrino_licencia"); } catch (e) {} licencia = null; }
+async function activarCodigo(clave) {
+  const msg = document.getElementById("codigoMsg"), t = tt();
+  clave = (clave || "").trim();
+  if (!clave) { msg.textContent = t.vacio; return false; }
+  msg.textContent = t.comprobando;
+  let res;
+  try { res = await pedir("/activar", { key: clave, dispositivo: idDispositivo() }); } catch (e) { msg.textContent = t.red; return false; }
+  const { status, d } = res;
+  if (status === 200 && d.ok && d.datos && d.datos.niveles) {
+    licencia = { key: clave, act: d.act, datos: d.datos };
+    try { localStorage.setItem("peregrino_licencia", JSON.stringify(licencia)); } catch (e) {}
+    aplicarPago(d.datos); msg.textContent = t.ok; setTimeout(cerrarCodigo, 1400); return true;
+  }
+  msg.textContent = t[d.error] || t.servidor; return false;
+}
+// Al abrir el juego: comprueba en segundo plano que la licencia sigue vigente (solo la quita si el servidor dice que fue revocada)
+async function revalidarLicencia() {
+  if (/[?&]compra=ok/.test(location.search)) abrirCodigo(tt().gracias);
+  if (!licencia) return;
+  try { const { status, d } = await pedir("/validar", { key: licencia.key, act: licencia.act });
+    if (status === 403 && d && d.revocada === true) { quitarLicencia(); location.reload(); } } catch (e) {}
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const ok = document.getElementById("codigoOk"), no = document.getElementById("codigoNo"), inp = document.getElementById("codigoIn");
+  if (!ok) return;
+  ok.addEventListener("click", () => activarCodigo(inp.value)); no.addEventListener("click", cerrarCodigo);
+  inp.addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") activarCodigo(inp.value); if (e.key === "Escape") cerrarCodigo(); });
+});
+
+const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(prog)); } catch (e) {} };
+
+// ============ IDIOMAS (español / English) ============
+let idioma = prog.idioma === "en" ? "en" : "es";
+const EN = {"El Señor sostiene a todos los abatidos y levanta a todos los que están doblados.": "Yahweh upholds all who fall, and raises up all those who are bowed down.", "Edén": "Eden", "El Diluvio": "The Flood", "Babel": "Babel", "La Promesa": "The Promise", "Betel": "Bethel", "José en Egipto": "Joseph in Egypt", "Mar Rojo": "Red Sea", "El Desierto": "The Desert", "El Sinaí": "Sinai", "Jericó": "Jericho", "Gedeón": "Gideon", "Rut": "Ruth", "Goliat": "Goliath", "Los Salmos": "The Psalms", "El Templo": "The Temple", "Elías": "Elijah", "Nehemías": "Nehemiah", "Babilonia": "Babylon", "Ester": "Esther", "Ezequiel": "Ezekiel", "El Gran Pez": "The Great Fish", "Belén": "Bethlehem", "Bautismo": "Baptism", "La Tentación": "The Temptation", "Galilea": "Galilee", "El Monte": "The Mount", "Panes y Peces": "Loaves and Fishes", "Transfiguración": "Transfiguration", "Betania": "Bethany", "Jerusalén": "Jerusalem", "Getsemaní": "Gethsemane", "La Cruz": "The Cross", "Tumba Vacía": "The Empty Tomb", "Emaús": "Emmaus", "Pentecostés": "Pentecost", "Filipos": "Philippi", "Damasco": "Damascus", "Éfeso": "Ephesus", "Patmos": "Patmos", "Nueva Jerusalén": "New Jerusalem", "La Serpiente": "The Serpent", "El Abismo": "The Abyss", "El Orgullo": "Pride", "La Duda": "Doubt", "El Temor": "Fear", "Columna de luz: nunca pierde vidas": "Column of light: never loses lives", "El Último Discípulo": "The Last Disciple", "Camina hacia la luz": "Walks toward the light", "David": "David", "Honda: pulsa X para lanzar piedras": "Sling: press X to throw stones", "Noé": "Noah", "Arca: pulsa X para un escudo de 3 s": "Ark: press X for a 3 s shield", "Moisés": "Moses", "Vara: doble salto en el aire": "Staff: double jump in the air", "Gracia: las estrellas valen el doble": "Grace: stars are worth double", "Sansón": "Samson", "Fuerza: vence al tocar, 4 vidas": "Strength: defeats by touch, 4 lives", "Jonás": "Jonah", "Planea: mantén saltar al caer": "Glide: hold jump while falling", "Trompeta: pulsa X para aturdir enemigos 2 s": "Trumpet: press X to stun enemies for 2 s", "Daniel": "Daniel", "Valiente: empieza con 5 vidas": "Brave: starts with 5 lives", "Pablo": "Paul", "Misionero: corre un 25% más rápido": "Missionary: runs 25% faster", "Fuego del cielo: X quema enemigos cercanos": "Fire from heaven: X burns nearby enemies", "María": "Mary", "Fe: una vida extra cada 8 estrellas": "Faith: an extra life every 8 stars", "Abraham": "Abraham", "A Saúl": "Saul", "A Sansón": "Samson", "A Goliat": "Goliath", "El Mar Muerto": "The Dead Sea", "El Mar Rojo": "The Red Sea", "El Mar de Galilea": "The Sea of Galilee", "Nazaret": "Nazareth", "Éxodo": "Exodus", "Salmos": "Psalms", "Génesis": "Genesis", "Josué": "Joshua", "José": "Joseph", "Salmo 1": "Psalm 1", "Salmo 23": "Psalm 23", "Salmo 91": "Psalm 91", "A Benjamín": "Benjamin", "A José": "Joseph", "A Judá": "Judah", "7 panes y 3 peces": "7 loaves and 3 fish", "12 panes": "12 loaves", "5 panes y 2 peces": "5 loaves and 2 fish", "Al día cuarenta": "On the fortieth day", "Al tercer día": "On the third day", "Al séptimo día": "On the seventh day", "Hechos": "Acts", "Apocalipsis": "Revelation", "Judas": "Jude", "Siete": "Seven", "Doce": "Twelve", "Diez": "Ten", "Saúl": "Saul", "Salomón": "Solomon", "Ezequías": "Hezekiah", "De cabras": "Goats", "De bueyes": "Oxen", "De ovejas": "Sheep", "Rebeca": "Rebekah", "Sara": "Sarah", "Raquel": "Rachel", "Pedro": "Peter", "Judas Iscariote": "Judas Iscariot", "Tomás": "Thomas", "Juan": "John", "Andrés": "Andrew", "Mateo": "Matthew", "Felipe": "Philip", "En el Nilo": "In the Nile", "En el mar Rojo": "In the Red Sea", "En el río Jordán": "In the Jordan River", "Caminar sobre el agua": "Walking on water", "Agua en vino": "Water into wine", "Sanar a un ciego": "Healing a blind man", "Santiago": "James", "Un águila": "An eagle", "Una paloma": "A dove", "Un cuervo": "A raven", "Cuarenta": "Forty", "Tres": "Three", "Carmelo": "Carmel", "Sinaí": "Sinai", "Sion": "Zion", "Ana": "Hannah", "Débora": "Deborah", "Nínive": "Nineveh", "Tiro": "Tyre", "Pan del cielo": "Bread from heaven", "El Espíritu Santo": "The Holy Spirit", "Una estrella": "A star", "Creó al hombre": "Created man", "Envió el diluvio": "Sent the flood", "Descansó": "Rested", "Elisabet": "Elizabeth", "Noemí": "Naomi", "¿Quién construyó el arca?": "Who built the ark?", "¿A quién venció David con una honda?": "Whom did David defeat with a sling?", "¿Qué mar abrió Moisés?": "Which sea did Moses part?", "¿Dónde nació Jesús?": "Where was Jesus born?", "¿Cuántos días llovió en el diluvio?": "How many days did it rain in the flood?", "¿Quién fue tragado por un gran pez?": "Who was swallowed by a great fish?", "¿Cuál es el primer libro de la Biblia?": "What is the first book of the Bible?", "¿Quién guio al pueblo en Jericó?": "Who led the people at Jericho?", "¿Cuántos discípulos eligió Jesús?": "How many disciples did Jesus choose?", "¿Quién fue echado al foso de los leones?": "Who was thrown into the lions' den?", "¿Qué salmo dice: Jehová es mi pastor?": "Which psalm says: Yahweh is my shepherd?", "¿Cuántos mandamientos recibió Moisés?": "How many commandments did Moses receive?", "¿A quién vendieron sus hermanos?": "Whom did his brothers sell?", "¿Qué tenía el muchacho de Juan 6?": "What did the boy in John 6 have?", "¿Cuándo resucitó Jesús?": "When did Jesus rise again?", "¿Cuál es el último libro de la Biblia?": "What is the last book of the Bible?", "¿Cuántos hijos tuvo Jacob?": "How many sons did Jacob have?", "¿Quién fue el primer rey de Israel?": "Who was the first king of Israel?", "¿Qué rey construyó el templo?": "Which king built the temple?", "¿Quién interpretó los sueños del faraón?": "Who interpreted Pharaoh's dreams?", "¿De qué animales era pastor David?": "What animals did David shepherd?", "¿Cómo se llamaba la esposa de Abraham?": "What was the name of Abraham's wife?", "¿Quién traicionó a Jesús?": "Who betrayed Jesus?", "¿Quién negó a Jesús tres veces?": "Who denied Jesus three times?", "¿Qué apóstol dudó de la resurrección?": "Which apostle doubted the resurrection?", "¿En qué lugar fue bautizado Jesús?": "Where was Jesus baptized?", "¿Cuál fue el primer milagro de Jesús?": "What was Jesus' first miracle?", "¿Quién escribió muchos salmos?": "Who wrote many psalms?", "¿Cuántos libros tiene la Biblia?": "How many books does the Bible have?", "¿Quién era el hombre más fuerte?": "Who was the strongest man?", "¿Qué ave llevó una rama a Noé?": "Which bird brought a branch to Noah?", "¿Cuántos días estuvo Jonás en el pez?": "How many days was Jonah in the fish?", "¿En qué monte recibió Moisés la ley?": "On which mountain did Moses receive the law?", "¿Quién fue la madre de Samuel?": "Who was Samuel's mother?", "¿Qué reina salvó a su pueblo en Persia?": "Which queen saved her people in Persia?", "¿Cómo se llamaba la suegra de Rut?": "What was the name of Ruth's mother-in-law?", "¿A qué ciudad fue enviado Jonás?": "To which city was Jonah sent?", "¿Quién fue el apóstol de los gentiles?": "Who was the apostle to the Gentiles?", "¿Qué llenó a los discípulos en Pentecostés?": "What filled the disciples at Pentecost?", "¿Cuántos libros tiene el Nuevo Testamento?": "How many books does the New Testament have?", "¿Qué hizo Dios en el séptimo día?": "What did God do on the seventh day?", "Un viaje de cuarenta etapas por la Biblia": "A forty-stage journey through the Bible", "Galería de versículos": "Verse Gallery", "◀ Volver": "◀ Back", "Versículos de premio (al vencer enemigos)": "Reward verses (for defeating enemies)", "sin descubrir": "undiscovered", "★ Nuevo en tu galería": "★ New in your gallery", "Pausa": "Paused", "Pulsa P o toca la pantalla para seguir": "Press P or tap the screen to continue", "Pregunta bíblica": "Bible question", "Pulsa 1, 2 o 3, o toca la respuesta": "Press 1, 2 or 3, or tap the answer", "Difícil": "Hard", "¡Nivel completado!": "Level complete!", "¡Llegaste a la Nueva Jerusalén!": "You reached the New Jerusalem!", "Fin del camino": "End of the road", "Enter o toca para el siguiente nivel": "Press Enter or tap for the next level", "Enter o toca para volver al menú": "Press Enter or tap to return to the menu", "Enter o toca para reintentar el nivel": "Press Enter or tap to retry the level", "¡Correcto! +100 estrellas": "Correct! +100 stars", "¡Corazón de gozo!": "Heart of joy!", "+1 vida": "+1 life", "Armadura de Dios (Efesios 6:11)": "Armor of God (Ephesians 6:11)", "Invencible 8 segundos: toca a los enemigos para vencerlos": "Invincible for 8 seconds: touch enemies to defeat them", "Textos bíblicos: Reina-Valera 1909, ortografía actualizada (dominio público)": "Bible text: World English Bible (public domain)", "Textos: Reina-Valera 1909, ortografía actualizada (dominio público). Música y gráficos originales.": "Text: World English Bible (public domain). Original music and graphics.", "“Bien hecho, buen siervo. Como fuiste fiel en lo poco…”  Lucas 19:17": "“Well done, you good servant!”  Luke 19:17", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21": "“Well done, good and faithful servant.”  Matthew 25:21", "“Después de mi caída seré levantado.”  Miqueas 7:8": "“When I fall, I will arise.”  Micah 7:8", "En el principio creó Dios los cielos y la tierra.": "In the beginning, God created the heavens and the earth.", "Y creó Dios al hombre a su imagen, a imagen de Dios lo creó.": "God created man in his own image. In God’s image he created him; male and female he created them.", "Era bueno en gran manera.": "God saw everything that he had made, and, behold, it was very good. There was evening and there was morning, a sixth day.", "Pero Noé halló gracia en los ojos de Jehová.": "But Noah found favor in Yahweh’s eyes.", "Entra tú y toda tu casa en el arca.": "Come with all of your household into the ship, for I have seen your righteousness before me in this generation.", "Mi arco pondré en las nubes, el cual será por señal de convenio entre mí y la tierra.": "I set my rainbow in the cloud, and it will be a sign of a covenant between me and the earth.", "Edifiquémonos una ciudad y una torre, cuya cúspide llegue al cielo.": "Let’s build ourselves a city, and a tower whose top reaches to the sky, and let’s make a name for ourselves.", "Antes del quebrantamiento es la soberbia.": "Pride goes before destruction, and an arrogant spirit before a fall.", "Si Jehová no edificare la casa, en vano trabajan los que la edifican.": "Unless Yahweh watches over the city, the watchman guards it in vain.", "Mira ahora a los cielos, y cuenta las estrellas, si las puedes contar.": "Yahweh brought him outside, and said, “Look now toward the sky, and count the stars, if you are able to count them.”", "Y haré de ti una nación grande, y bendecirte he, y engrandeceré tu nombre, y serás bendición.": "I will make of you a great nation. I will bless you and make your name great. You will be a blessing.", "En el monte de Jehová será provisto.": "As it is said to this day, “On Yahweh’s mountain, it will be provided.”", "Y soñó, y he aquí una escala que estaba apoyada en tierra, y su cabeza tocaba en el cielo.": "He dreamed and saw a stairway set upon the earth, and its top reached to heaven.", "Y he aquí, yo soy contigo, y te guardaré por donde quiera que fueres, y te volveré a esta tierra.": "Behold, I am with you, and will keep you, wherever you go, and will bring you again into this land.", "Ciertamente Jehová está en este lugar.": "Jacob awakened out of his sleep, and he said, “Surely Yahweh is in this place, and I didn’t know it.”", "Fíate de Jehová de todo tu corazón.": "Trust in Yahweh with all your heart, and don’t lean on your own understanding.", "Jehová es mi luz y mi salvación; ¿de quién temeré?": "Yahweh is my light and my salvation. Whom shall I fear? Yahweh is the strength of my life. Of whom shall I be afraid?", "La palabra del Dios nuestro permanece para siempre.": "The grass withers, the flower fades; but the word of our God stands forever.", "Y sabemos que a los que a Dios aman, todas las cosas les ayudan a bien, es a saber, a los que conforme al propósito son llamados.": "We know that all things work together for good for those who love God, for those who are called according to his purpose.", "Vosotros sois la luz del mundo.": "You are the light of the world. A city located on a hill can’t be hidden.", "Porque no nos ha dado Dios el espíritu de temor, sino el de fortaleza, y de amor, y de templanza.": "For God didn’t give us a spirit of fear, but of power, love, and self-control.", "Gustad, y ved que es bueno Jehová.": "Oh taste and see that Yahweh is good. Blessed is the man who takes refuge in him.", "Venid a mí todos los que estáis trabajados y cargados, que yo os haré descansar.": "Come to me, all you who labor and are heavily burdened, and I will give you rest.", "Nosotros le amamos a él, porque él nos amó primero.": "We love him, because he first loved us.", "Torre fuerte es el nombre de Jehová.": "Yahweh’s name is a strong tower: the righteous run to him, and are safe.", "Pues que a sus ángeles mandará acerca de ti, que te guarden en todos tus caminos.": "For he will put his angels in charge of you, to guard you in all your ways.", "Pensamientos de paz, y no de mal.": "Says Yahweh, “thoughts of peace, and not of evil, to give you hope and a future.”", "El bien y la misericordia me seguirán todos los días de mi vida.": "Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in Yahweh’s house forever.", "Que yo y mi casa serviremos a Jehová.": "But as for me and my house, we will serve Yahweh.", "Tú le guardarás en completa paz, cuyo pensamiento en ti persevera.": "You will keep whoever’s mind is steadfast in perfect peace, because he trusts in you.", "Solamente hacer juicio, y amar misericordia, y humillarte para andar con tu Dios.": "What does Yahweh require of you, but to act justly, to love mercy, and to walk humbly with your God?", "Nuevas son cada mañana; grande es tu fidelidad.": "They are new every morning. Great is your faithfulness.", "Entrad por sus puertas con reconocimiento, por sus atrios con alabanza.": "Enter into his gates with thanksgiving, and into his courts with praise. Give thanks to him, and bless his name.", "Para todas las cosas hay sazón, y todo lo que se quiere debajo del cielo, tiene su tiempo.": "For everything there is a season, and a time for every purpose under heaven.", "Es pues la fe la sustancia de las cosas que se esperan, la demostración de las cosas que no se ven.": "Now faith is assurance of things hoped for, proof of things not seen.", "Y si alguno de vosotros tiene falta de sabiduría, demándela a Dios, el cual da a todos abundantemente, y no zahiere.": "But if any of you lacks wisdom, let him ask of God, who gives to all liberally and without reproach.", "Velad, estad firmes en la fe.": "Watch! Stand firm in the faith! Be courageous! Be strong!", "No nos cansemos, pues, de hacer bien.": "Let’s not be weary in doing good, for we will reap in due season if we don’t give up.", "Porque por gracia sois salvos por la fe; y esto no de vosotros, pues es don de Dios.": "For by grace you have been saved through faith, and that not of yourselves; it is the gift of God.", "Yo estoy con vosotros todos los días.": "“Teaching them to observe all things that I commanded you. Behold, I am with you always, even to the end of the age.” Amen.", "Confiad, yo he vencido al mundo.": "I have told you these things, that in me you may have peace. In the world you have trouble; but cheer up!", "Este es el día que hizo Jehová; nos gozaremos y alegraremos en él.": "This is the day that Yahweh has made. We will rejoice and be glad in it!", "Estad siempre gozosos.": "Always rejoice."};
+Object.assign(EN, {"¡Has terminado la demo!": "You finished the demo!", "Juego completo: 40 niveles, 40 jefes y 12 personajes · 2,99 €": "Full game: 40 levels, 40 bosses and 12 characters · €2.99", "DEMO GRATUITA · 5 niveles · Juego completo 2,99 €": "FREE DEMO · 5 levels · Full game €2.99"});
+if (licencia && licencia.datos && licencia.datos.en) Object.assign(EN, licencia.datos.en);
+const LIBROS_EN = {"Génesis": "Genesis", "Éxodo": "Exodus", "Deuteronomio": "Deuteronomy", "Josué": "Joshua", "Jueces": "Judges", "Rut": "Ruth", "1 Samuel": "1 Samuel", "1 Reyes": "1 Kings", "Nehemías": "Nehemiah", "Ester": "Esther", "Salmos": "Psalms", "Salmo": "Psalm", "Proverbios": "Proverbs", "Eclesiastés": "Ecclesiastes", "Isaías": "Isaiah", "Jeremías": "Jeremiah", "Lamentaciones": "Lamentations", "Ezequiel": "Ezekiel", "Daniel": "Daniel", "Jonás": "Jonah", "Miqueas": "Micah", "Zacarías": "Zechariah", "Mateo": "Matthew", "Marcos": "Mark", "Lucas": "Luke", "Juan": "John", "Hechos": "Acts", "Romanos": "Romans", "1 Corintios": "1 Corinthians", "2 Corintios": "2 Corinthians", "Gálatas": "Galatians", "Efesios": "Ephesians", "Filipenses": "Philippians", "1 Tesalonicenses": "1 Thessalonians", "2 Timoteo": "2 Timothy", "Hebreos": "Hebrews", "Santiago": "James", "1 Juan": "1 John", "Apocalipsis": "Revelation"};
+const PATRONES = [
+  [/^Dificultad: (Difícil|Normal) \(H\)$/, (m, a) => "Difficulty: " + tr(a) + " (H)"],
+  [/^Modo: (2 jugadores|1 jugador) \(T\)$/, (m, a) => "Mode: " + a.replace("jugadores", "players").replace("jugador", "player") + " (T)"],
+  [/^Galería (\d+)\/(\d+) \(G\)$/, (m, a, b) => "Gallery " + a + "/" + b + " (G)"],
+  [/^(\d+) de (\d+) descubiertos$/, (m, a, b) => a + " of " + b + " discovered"],
+  [/^Página (\d+) de (\d+)  ·  ◀ ▶ o toca los lados para cambiar  ·  Esc para volver$/, (m, a, b) => "Page " + a + " of " + b + "  ·  ◀ ▶ or tap the sides to change  ·  Esc to go back"],
+  [/^(♥*)   ★ (\d+)(   Difícil)?$/, (m, a, b, c) => a + "   ★ " + b + (c ? "   Hard" : "")],
+  [/^Nivel (\d+) · (.+)$/, (m, a, b) => "Level " + a + " · " + tr(b)],
+  [/^Nivel (\d+)$/, (m, a) => "Level " + a],
+  [/^Jefe: (.+) · ¡salta encima para abrir la meta!$/, (m, a) => "Boss: " + tr(a) + " · jump on top to open the goal!"],
+  [/^Jefe: (.+)$/, (m, a) => "Boss: " + tr(a)],
+  [/^¡Venciste a (.+)! · (.+)$/, (m, a, b) => "You defeated " + tr(a) + "! · " + tr(b)],
+  [/^Jehová te levantó · (.+)$/, (m, a) => "Yahweh lifted you up · " + tr(a)],
+  [/^(\d+)\. (.+)$/, (m, a, b) => a + ". " + tr(b)],
+  [/^🔒 (.+)$/, (m, a) => "🔒 " + tr(a)],
+  [/^(.+?) — (.+)$/, (m, a, b) => tr(a) + " — " + tr(b)],
+  [/^★ (\d+)   Mejor: (\d+)(  \(modo difícil\))?$/, (m, a, b, c) => "★ " + a + "   Best: " + b + (c ? "  (hard mode)" : "")],
+  [/^¡Nuevo personaje: (.+)!$/, (m, a) => "New character: " + tr(a) + "!"],
+  [/^J1: (.+) \(flechas, espacio, X\)   ·   J2: (.+) \(A D W, S o botones\)$/, (m, a, b) => "P1: " + tr(a) + " (arrows, space, X)   ·   P2: " + tr(b) + " (A D W, S or buttons)"],
+  [/^J(\d)$/, (m, a) => "P" + a],
+  [/^Personajes (\d+)\/(\d+) · ◀ ▶ para cambiar · Enter o toca un nivel para empezar$/, (m, a, b) => "Characters " + a + "/" + b + " · ◀ ▶ to change · Press Enter or tap a level to start"],
+  [/^Página (\d+)\/(\d+) \(▲▼ o toca aquí\)  ·  Mejor: (\d+)  ·  M silencio  P pausa$/, (m, a, b, c) => "Page " + a + "/" + b + " (▲▼ or tap here)  ·  Best: " + c + "  ·  M mute  P pause"],
+  [/^La respuesta era: (.+)$/, (m, a) => "The answer was: " + tr(a)],
+];
+function tr(s) {
+  if (idioma !== "en" || typeof s !== "string") return s;
+  if (EN[s] !== undefined) return EN[s];
+  const c = /^((?:[123] )?[A-Za-zÁÉÍÓÚáéíóúñÑ]+) (\d+:\d+)$/.exec(s);
+  if (c && LIBROS_EN[c[1]]) return LIBROS_EN[c[1]] + " " + c[2];
+  for (const [re, f] of PATRONES) { const m = re.exec(s); if (m) return f(...m); }
+  return s;
+}
+function trq(s) { const m = /^“(.+)”$/.exec(s); return m ? "“" + tr(m[1]) + "”" : tr(s); }
+const TEXTOS_DOM = {
+  es: { titulo: "El Último Discípulo", lang: "es", ayuda: "Flechas o A/D para caminar, espacio o ↑ para saltar (mantén para saltar más alto). P pausa, M silencio. Enter continúa. En el menú, ◀ ▶ cambian de personaje; X: habilidad del personaje (honda, arca, trompeta, fuego). Q o el botón Menú vuelven al menú. Dos jugadores: pulsa T en el menú (o toca la franja de arriba). J1 usa flechas, espacio y X; J2 usa A, D, W y S, o los botones J2 que aparecen debajo. En el menú: H activa el modo difícil, G abre la galería de versículos y L cambia el idioma. Si caes al vacío, Jehová te levanta una vez por nivel. También puedes jugar con un mando.",
+    bIzq: "◀", bSalto: "Saltar", bFuego: "Habilidad", bMenu: "Menú", bDer: "▶", b2Izq: "J2 ◀", b2Salto: "J2 Saltar", b2Fuego: "J2 Habilidad", b2Der: "J2 ▶", canvas: "Juego El Último Discípulo" },
+  en: { titulo: "The Last Disciple", lang: "en", ayuda: "Arrow keys or A/D to walk, Space or ↑ to jump (hold to jump higher). P pauses, M mutes. Enter continues. In the menu, ◀ ▶ change character; X: character ability (sling, ark, trumpet, fire). Q or the Menu button returns to the menu. Two players: press T in the menu (or tap the top strip). P1 uses the arrows, Space and X; P2 uses A, D, W and S, or the P2 buttons shown below. In the menu: H toggles hard mode, G opens the verse gallery and L switches the language. If you fall into the void, Yahweh lifts you up once per level. You can also play with a gamepad.",
+    bIzq: "◀", bSalto: "Jump", bFuego: "Ability", bMenu: "Menu", bDer: "▶", b2Izq: "P2 ◀", b2Salto: "P2 Jump", b2Fuego: "P2 Ability", b2Der: "P2 ▶", canvas: "The Last Disciple game" },
+};
+function aplicarIdiomaDOM() {
+  const t = TEXTOS_DOM[idioma];
+  try {
+    document.title = t.titulo; document.documentElement.lang = t.lang;
+    const a = document.querySelector(".ayuda"); if (a) a.textContent = t.ayuda;
+    for (const id of ["bIzq", "bSalto", "bFuego", "bMenu", "bDer", "b2Izq", "b2Salto", "b2Fuego", "b2Der"]) { const b = document.getElementById(id); if (b) { b.textContent = t[id]; b.setAttribute("aria-label", t[id]); } }
+    const c = document.getElementById("juego"); if (c) c.setAttribute("aria-label", t.canvas);
+  } catch (e) {}
+}
+function alternarIdioma() { idioma = idioma === "en" ? "es" : "en"; prog.idioma = idioma; guardar(); aplicarIdiomaDOM(); tono(700, .1, "triangle", .05); }
+
+
+// ----- Galería de versículos y modo difícil -----
+// Lista de todos los versículos del juego (sin repetidos): los de cada nivel y los de premio
+const calcVers = () => {
+  const v = [], vistos = new Set();
+  NIVELES.forEach((L, i) => L.vers.forEach(x => { if (!vistos.has(x[1])) { vistos.add(x[1]); v.push({cita:x[0], texto:x[1], nivel:i}); } }));
+  EXTRA.forEach(x => { if (!vistos.has(x[1])) { vistos.add(x[1]); v.push({cita:x[0], texto:x[1], nivel:-1}); } });
+  return v;
+};
+let todosLosVers = calcVers();
+// Apunta un versículo en la galería; devuelve true si es nuevo
+function descubrir(texto) { if (prog.vers.includes(texto)) return false; prog.vers.push(texto); guardar(); return true; }
+// La mejor puntuación se guarda por separado en el modo normal y en el difícil
+function mejorar() { if (dificil) prog.mejorDif = Math.max(prog.mejorDif || 0, puntos); else prog.mejor = Math.max(prog.mejor, puntos); }
+const mejor = () => dificil ? (prog.mejorDif || 0) : prog.mejor;
+
+
+let ac = null, mudo = false;
+function activarAudio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state !== 'running') ac.resume(); } catch (e) {} }
+// iPhone y iPad: Safari solo activa el sonido con un toque completo
+["touchend", "click", "keydown"].forEach(ev => addEventListener(ev, activarAudio, { passive: true }));
+function tono(f, d = .12, tipo = "square", vol = .05, f2 = f) {
+  if (mudo || !ac) return;
+  try { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+    o.type = tipo; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f2, t + d);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(t + d); } catch (e) {}
+}
+const melodia = notas => notas.forEach((f, i) => setTimeout(() => tono(f, .25, "triangle", .07), i*130));
+
+let rescates = 1, rescateT = 0, rescatado = null;
+let estado = "menu", nivel = 0, N, jugador, camara = 0, vidas, puntos = 0, puntosBase = 0, guardado, versiculo, tVers = 0,
+    tIntro = 0, pasados, particulas = [], temblor = 0, tiempo = 0;
+
+function iniciar(i, reset) {
+  if (!nivelPermitido(i)) { estado = "menu"; return; }
+  if (reset) puntos = 0;
+  puntosBase = puntos; nivel = i; N = generar(i); vidas = Math.max(2, (modo2 ? 5 : ({'Sansón':4, 'Daniel':5}[quien().n] || 3)) - (dificil ? (modo2 ? 2 : 1) : 0)); guardado = 60; pasados = new Set(); rescates = 1; rescateT = 0; rescatado = null;
+  estrellas = N.est.map(m => ({x:m[0], y:m[1], cogida:false})); particulas = []; piedras = []; balas = []; nuevoPj = null; versiculo = null; tVers = 0; versNuevo = false; descubrir(NIVELES[i].vers[0][1]);
+  reaparecer(); estado = "intro"; tIntro = 200;
+}
+let estrellas = [], piedras = [], nuevoPj = null, pagMenu = 0, menuVisto = false, preg = null, msgPreg = "";
+let modo2 = false, jugadores = [];
+let dificil = false, balas = [], pagGal = 0, versNuevo = false;
+const crearPj = (x, P, k) => ({x, y:380, w:30, h:44, vx:0, vy:0, enSuelo:false, mira:1, coyote:0, buf:0, inv:60, prevSalto:false, escudo:0, honda:0, doble:false, P, k});
+function reaparecer() {
+  jugadores = [crearPj(guardado, quien(), teclas)];
+  if (modo2) jugadores.push(crearPj(guardado + 40, quien2(), teclas2));
+  jugador = jugadores[0];
+  camara = Math.max(0, guardado - ANCHO/3);
+}
+// Un jugador que cae reaparece junto a su compañero (o en el último letrero si juega solo)
+function renacer(pj) {
+  const o = jugadores.find(p => p !== pj && p.y < ALTO);
+  Object.assign(pj, crearPj(o ? o.x : guardado, pj.P, pj.k));
+  if (o) pj.y = o.y - 80; else camara = Math.max(0, guardado - ANCHO/3);
+}
+// En el modo de dos jugadores, J2 juega con el personaje siguiente de la lista
+function quien2() { const l = PERSONAJES.filter(p => p.des <= prog.max); return l[(Math.min(prog.pj, l.length - 1) + 1) % l.length]; }
+function alternarDificil() { dificil = !dificil; tono(dificil ? 200 : 500, .15, 'sawtooth', .05, dificil ? 120 : 700); }
+const paginasGaleria = () => Math.ceil(NIVELES.length / 4) + Math.ceil(EXTRA.length / 14);   // 4 niveles por página y luego los versículos de premio
+function abrirGaleria() { estado = "galeria"; pagGal = 0; tono(520, .1, 'triangle', .05); }
+function cambiarGal(d) { const n = paginasGaleria(); pagGal = ((pagGal + d) % n + n) % n; tono(500, .06, 'triangle', .04); }
+function alternarModo() { modo2 = !modo2; mostrarBotones2(); tono(600, .1, 'triangle', .05); }
+function mostrarBotones2() { const c = document.getElementById('controles2'); if (c) c.style.display = modo2 ? 'flex' : 'none'; }
+function chispas(x, y, col, n = 10) {
+  for (let i = 0; i < n; i++) particulas.push({x, y, vx:(Math.random()-.5)*6, vy:-Math.random()*5-1, v:30+Math.random()*20, col});
+}
+
+// ============ 4. CONTROLES ============
+const teclas = {izq:false, der:false, salto:false, fuego:false};
+const teclas2 = {izq:false, der:false, salto:false, fuego:false};
+const mapa2 = {a:'izq', A:'izq', d:'der', D:'der', w:'salto', W:'salto', s:'fuego', S:'fuego'};
+// En 2 jugadores, A D W S son del jugador 2; en 1 jugador, A D W siguen moviendo al jugador 1
+function tecla(k, v) {
+  if (modo2 && mapa2[k]) { teclas2[mapa2[k]] = v; return true; }
+  if (mapa[k]) { teclas[mapa[k]] = v; return true; }
+  return false;
+}
+const mapa = {ArrowLeft:"izq", a:"izq", A:"izq", ArrowRight:"der", d:"der", D:"der", ArrowUp:"salto", w:"salto", W:"salto", " ":"salto", x:"fuego", X:"fuego"};
+function accion() {
+  if (estado === "intro") tIntro = 0;
+  else if (estado === "nivelok") iniciar(nivel + 1, false);
+  else if (estado === "perdiste") { puntos = puntosBase; iniciar(nivel, false); }
+  else if (estado === "fin") estado = "menu";
+  else if (estado === "galeria") estado = "menu";
+}
+function alPulsar(e) {
+  if (codigoAbierto) return;
+  activarAudio();
+  if (tecla(e.key, true)) e.preventDefault();
+  if (DEMO && (e.key === "b" || e.key === "B") && (estado === "menu" || estado === "fin")) { comprar(); return; }
+  if (DEMO && (e.key === "k" || e.key === "K") && (estado === "menu" || estado === "fin")) { abrirCodigo(); return; }
+  if ((e.key === "t" || e.key === "T") && estado === "menu") alternarModo();
+  if ((e.key === "h" || e.key === "H") && estado === "menu") alternarDificil();
+  if ((e.key === "l" || e.key === "L") && estado === "menu") alternarIdioma();
+  if ((e.key === "g" || e.key === "G") && (estado === "menu" || estado === "galeria")) { if (estado === "menu") abrirGaleria(); else estado = "menu"; }
+  if (estado === "galeria") {
+    if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") cambiarGal(-1);
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") cambiarGal(1);
+    if (e.key === "Escape") estado = "menu";
+  }
+  if (estado === "menu" && (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "a" || e.key === "d")) cambiarPj(e.key === "ArrowLeft" || e.key === "a" ? -1 : 1);
+  if (e.key === "Enter") { if (estado === "menu") iniciar(0, true); else accion(); }
+  if (e.key === "m" || e.key === "M") mudo = !mudo;
+  if (estado === "pregunta" && e.key >= "1" && e.key <= "3") { responder(+e.key - 1); return; }
+  if ((e.key === "q" || e.key === "Q") && estado !== "menu") estado = "menu";
+  if (estado === "menu" && (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "w" || e.key === "s")) cambiarPag(e.key === "ArrowUp" || e.key === "w" ? -1 : 1);
+  if (e.key === "p" || e.key === "P" || e.key === "Escape") { if (estado === "jugando") estado = "pausa"; else if (estado === "pausa") estado = "jugando"; }
+  if (estado === "menu" && e.key >= "1" && e.key <= "8" && +e.key - 1 <= prog.max) iniciar(+e.key - 1, true);
+}
+addEventListener("keydown", alPulsar);
+addEventListener("keyup", e => { tecla(e.key, false); });
+
+// ---- Mandos (Gamepad API: Xbox, PlayStation, Switch Pro, 8BitDo… por Bluetooth o USB) ----
+// Jugando: palanca izquierda o cruceta = mover, A = saltar, X o B = habilidad, Start = pausa.
+// Mando 1 -> jugador 1, mando 2 -> jugador 2 (en modo de 2 jugadores).
+// Menús: cruceta = elegir, A o Start = aceptar, Y = dificultad, LB = modo, RB = galería, Select = salir.
+const mandoPrev = {};
+function sondearMandos() {
+  if (typeof navigator === "undefined" || !navigator.getGamepads) return;
+  let lista = [];
+  try { lista = navigator.getGamepads() || []; } catch (e) { return; }   // el visor puede bloquear los mandos
+  let n = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const g = lista[i];
+    if (!g || !g.connected) continue;
+    const ord = n++;
+    const cur = [];
+    for (let k = 0; k < 16; k++) cur[k] = !!(g.buttons[k] && g.buttons[k].pressed);
+    const ax = g.axes[0] || 0;
+    const p = mandoPrev[i] || (mandoPrev[i] = {izq:false, der:false, salto:false, fuego:false, b:[]});
+    const dest = (modo2 && ord === 1) ? teclas2 : teclas;
+    const ahora = {izq: cur[14] || ax < -.5, der: cur[15] || ax > .5, salto: cur[0], fuego: cur[2] || cur[1]};
+    for (const k in ahora) { if (ahora[k] !== p[k]) { dest[k] = ahora[k]; p[k] = ahora[k]; } }
+    const nuevo = k => cur[k] && !p.b[k];
+    const tocar = k => { alPulsar({key:k, preventDefault(){}}); if (k.startsWith("Arrow")) tecla(k, false); };
+    if (ord === 0) {
+      if (estado === "jugando") { if (nuevo(9)) tocar("p"); }
+      else if (estado === "pausa") { if (nuevo(9)) tocar("p"); if (nuevo(8)) tocar("q"); }
+      else if (estado === "pregunta") { for (let k = 0; k < 3; k++) if (nuevo(k)) tocar(String(k + 1)); }
+      else if (estado === "galeria") { if (nuevo(14)) tocar("ArrowLeft"); if (nuevo(15)) tocar("ArrowRight"); if (nuevo(1) || nuevo(8)) tocar("Escape"); if (nuevo(5)) tocar("g"); }
+      else if (estado === "menu") {
+        if (nuevo(14)) tocar("ArrowLeft"); if (nuevo(15)) tocar("ArrowRight");
+        if (nuevo(12)) tocar("ArrowUp"); if (nuevo(13)) tocar("ArrowDown");
+        if (nuevo(0) || nuevo(9)) tocar("Enter");
+        if (nuevo(4)) tocar("t"); if (nuevo(3)) tocar("h"); if (nuevo(5)) tocar("g"); if (nuevo(6)) tocar("l");
+      } else { if (nuevo(0) || nuevo(9)) tocar("Enter"); if (nuevo(8)) tocar("q"); }
+    }
+    p.b = cur;
+  }
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden && estado === "jugando") estado = "pausa"; });
+function botonTactil(id, tecla, teclado = teclas) {
+  const b = document.getElementById(id);
+  b.addEventListener("pointerdown", e => { e.preventDefault(); activarAudio(); teclado[tecla] = true; });
+  ["pointerup","pointerleave","pointercancel"].forEach(ev => b.addEventListener(ev, () => teclado[tecla] = false));
+}
+botonTactil("bIzq","izq"); botonTactil("bDer","der"); botonTactil("bSalto","salto"); botonTactil("bFuego","fuego");
+// Botones del jugador 2 (solo se ven en el modo de dos jugadores)
+botonTactil("b2Izq","izq",teclas2); botonTactil("b2Der","der",teclas2); botonTactil("b2Salto","salto",teclas2); botonTactil("b2Fuego","fuego",teclas2);
+document.getElementById("bMenu").addEventListener("click", () => { teclas.izq = teclas.der = teclas.salto = teclas.fuego = false; teclas2.izq = teclas2.der = teclas2.salto = teclas2.fuego = false; estado = "menu"; });
+lienzo.addEventListener("pointerdown", e => {
+  activarAudio();
+  const r = lienzo.getBoundingClientRect(), cx = (e.clientX - r.left) * ANCHO / r.width, cy = (e.clientY - r.top) * ALTO / r.height;
+  if (estado === "galeria") { if (cx < 170 && cy < 56) estado = "menu"; else cambiarGal(cx < ANCHO/2 ? -1 : 1); return; }
+  if (estado === "pregunta") { for (let k = 0; k < 3; k++) if (cy > 280 + k*62 && cy < 332 + k*62) responder(k); return; }
+  if (DEMO && estado === "menu" && cy >= 54 && cy < 88 && cx < 450) { if (cx < 240) comprar(); else abrirCodigo(); return; }
+  if (DEMO && estado === "fin" && cy >= 384 && cy < 428) { if (cx > 230 && cx < 470) comprar(); else if (cx >= 490 && cx < 730) abrirCodigo(); return; }
+  if (estado === "menu" && cy >= 60 && cy < 96 && cx > 780) { alternarIdioma(); return; }
+  if (estado === "menu" && cy < 62) { if (cx < 327) alternarDificil(); else if (cx < 633) alternarModo(); else abrirGaleria(); return; }
+  if (estado === "menu" && cy > 514) { cambiarPag(cx < ANCHO/2 ? -1 : 1); return; }
+  if (estado === "menu" && cy > 210 && cy < 300) { cambiarPj(cx < ANCHO/2 ? -1 : 1); return; }
+  if (estado === "menu") {
+    for (let k = 0; k < 18; k++) { const i = pagMenu*18 + k, x = 12 + (k%6)*156, y = 330 + ((k/6)|0)*64; if (i < NIVELES.length && cx > x && cx < x+148 && cy > y && cy < y+54 && i <= prog.max) iniciar(i, true); }
+  } else if (estado === "pausa") estado = "jugando";
+  else accion();
+});
+
+// ============ 5. FÍSICA Y REGLAS ============
+const VEL = 4.5, GRAV = 0.55, SALTO = -11.5;
+const choca = (a, b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+const rect = p => ({x:p[0], y:p[1], w:p[2], h:p[3]});
+
+// Habilidad especial de cada personaje (tecla X, o S para el jugador 2)
+function habilidad(j, P) {
+  if (P.n === 'Noé') { j.escudo = 180; j.honda = 600; tono(300, .3, 'sine', .06, 600); }   // arca de Noé
+  else if (P.n === 'David') { piedras.push({x:j.x+15, y:j.y+14, vx:j.mira*9, v:60, dueno:j}); j.honda = 25; tono(700, .08, 'triangle', .05, 300); }   // honda de David
+  else if (P.n === 'Gedeón') { N.ene.forEach(e => { if (Math.abs(e.x - j.x) < 450) e.paro = 120; }); j.honda = 420; tono(220, .4, 'sawtooth', .06, 440); temblor = 8; }   // trompeta de Gedeón
+  else if (P.n === 'Elías') { N.ene.forEach(e => { if (e.vivo && !(e.flash > 0) && Math.abs(e.x - j.x) < 250) { chispas(e.x + e.w/2, e.y, '#ff9a3a', 12); derrotar(e, true); } }); j.honda = 480; tono(500, .4, 'sawtooth', .06, 100); temblor = 10; }   // fuego del cielo
+}
+
+// ----- Ataques de los jefes: cada tipo de jefe tiene el suyo -----
+// serpiente: escupe veneno · agua: ola a ras de suelo (hay que saltarla) · ídolo: llamas a los dos lados
+// corona y gigante: lanza en arco · piedra: lluvia de rocas con aviso · dragón: abanico de bolas de fuego · sombra: orbe dirigido
+const cdJefe = e => Math.round(({piedra:190, dragon:170, agua:140, idolo:160}[e.tipo] || 150) * (dificil ? .7 : 1) * (.85 + Math.random() * .3));
+function atacarJefe(e, obj) {
+  const vb = dificil ? 1.25 : 1, cx = e.x + e.w/2, cy = e.y + e.h * .4;
+  const dx = obj.x + 15 - cx, dy = obj.y + 22 - cy, dir = dx >= 0 ? 1 : -1;
+  const nueva = b => { if (balas.length < 14) balas.push(Object.assign({v:420, r:9, g:0, vx:0, vy:0}, b)); };
+  const apuntar = (vel, desv = 0) => { const a = Math.atan2(dy, dx) + desv; return {vx:Math.cos(a) * vel * vb, vy:Math.sin(a) * vel * vb}; };
+  tono(260, .25, 'sawtooth', .05, 90);
+  switch (e.tipo) {
+    case 'serpiente': nueva({tipo:'veneno', x:cx + dir * e.w/2, y:e.y + e.h - 24, vx:dir * 4.6 * vb}); break;
+    case 'agua': nueva({tipo:'ola', x:cx + dir * e.w/2, y:446, vx:dir * 4.2 * vb, r:14}); break;
+    case 'idolo': for (const d of [-1, 1]) nueva({tipo:'onda', x:cx + d * e.w/2, y:446, vx:d * 3.8 * vb, r:14}); break;
+    case 'corona': case 'gigante': {
+      const T = 60, g = .28, vx = Math.max(-7 * vb, Math.min(7 * vb, dx / T));     // lanza en arco que cae sobre el jugador
+      nueva({tipo:'lanza', x:cx, y:cy, vx, vy:(dy - .5 * g * T * T) / T, g, r:8}); break; }
+    case 'piedra': { const n = dificil ? 3 : 2;
+      for (let k = 0; k < n; k++) nueva({tipo:'roca', x:obj.x + 15 + (k - (n - 1)/2) * 110 + (Math.random() - .5) * 40, y:-30, g:.45, r:15, espera:45 + k * 18}); break; }
+    case 'dragon': for (const d of (dificil ? [-.5, -.25, 0, .25, .5] : [-.28, 0, .28])) nueva(Object.assign({tipo:'fuego', x:cx, y:cy, r:10}, apuntar(4.2, d))); break;
+    default: nueva(Object.assign({tipo:'orbe', x:cx, y:cy, r:10}, apuntar(4.4)));
+  }
+}
+
+function actualizar() {
+  tiempo++; if (rescateT > 0) rescateT--;
+  if (estado === "intro") { if (--tIntro <= 0) estado = "jugando"; return; }
+  if (estado !== "jugando") return;
+  const plats = N.suelo.concat(N.plat);
+
+  // Los enemigos se mueven una sola vez, haya uno o dos jugadores
+  for (const e of N.ene) {
+    if (!e.vivo) continue;
+    if (e.paro > 0) e.paro--; else e.x += e.dir * (e.jefe ? (e.vel || 2) : (e.v || 1.3));
+    if (e.flash > 0) e.flash--;
+    if (e.x < e.min || e.x + e.w > e.max) e.dir *= -1;
+    if (e.vuela) e.y = e.by + Math.sin(tiempo/25 + e.min) * 45;
+    if (e.jefe) {      // el jefe ataca a quien tiene cerca, con un aviso (!) justo antes
+      const puede = !(e.paro > 0) && !(e.flash > 0);
+      const obj = puede ? jugadores.filter(p => p.y < ALTO && Math.abs(p.x - e.x) < 760).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x))[0] : null;
+      e.aviso = !!obj && e.atk < 36;
+      if (obj && --e.atk <= 0) { atacarJefe(e, obj); e.atk = cdJefe(e); }
+    }
+  }
+
+  for (const pj of jugadores) {
+    if (estado !== "jugando") break;
+    jugador = pj;                       // derrotar(), premio() y perderVida() usan el jugador activo
+    const j = pj, P = pj.P, K = pj.k;
+
+    j.vx = ((K.der ? VEL : 0) - (K.izq ? VEL : 0)) * (P.n === 'Pablo' ? 1.25 : 1);
+    if (j.vx) j.mira = Math.sign(j.vx);
+    // Salto con "coyote time" (saltar justo al salir del borde) y "buffer" (saltar justo antes de aterrizar)
+    if (K.salto && !j.prevSalto) {
+      j.buf = 7;
+      if (P.n === "Moisés" && !j.enSuelo && j.coyote <= 0 && !j.doble) { j.vy = SALTO; j.doble = true; chispas(j.x+15, j.y+j.h, "#6a8fd9", 8); tono(520, .15, "square", .05, 900); }   // doble salto con la vara
+    }
+    j.prevSalto = K.salto; j.buf--; j.coyote = j.enSuelo ? 7 : j.coyote - 1; if (j.enSuelo) j.doble = false;
+    if (j.buf > 0 && j.coyote > 0) { j.vy = SALTO; j.buf = 0; j.coyote = 0; tono(380, .15, "square", .05, 760); chispas(j.x+15, j.y+j.h, "#f1e6d0", 5); }
+    if (!K.salto && j.vy < -4) j.vy = -4;       // soltar la tecla = salto corto
+    j.vy += GRAV; if (P.n === "Jonás" && K.salto && j.vy > 1.5) j.vy = 1.5;   // Jonás planea
+    j.inv--; j.escudo--; j.honda--;
+    if (K.fuego && j.honda <= 0) habilidad(j, P);
+
+    j.x += j.vx;
+    if (j.x > N.meta && N.ene.some(e => e.jefe && e.vivo)) j.x = N.meta;      // la meta está cerrada hasta vencer al gigante
+    for (const p of plats) { const r = rect(p); if (choca(j, r)) j.x = j.vx > 0 ? r.x - j.w : r.x + r.w; }
+    if (j.x < 0) j.x = 0;
+    j.y += j.vy; j.enSuelo = false;
+    for (const p of plats) {
+      const r = rect(p);
+      if (choca(j, r)) { if (j.vy > 0) { j.y = r.y - j.h; j.enSuelo = true; } else j.y = r.y + r.h; j.vy = 0; }
+    }
+    if (j.y > ALTO + 100) { perderVida(true); continue; }
+
+    for (const m of estrellas) if (!m.cogida && choca(j, {x:m.x-14, y:m.y-14, w:28, h:28})) {
+      m.cogida = true; puntos += P.n === 'Ester' ? 20 : 10;
+      if (P.n === 'María' && ((j.fe = (j.fe || 0) + 1) % 8 === 0)) { vidas = Math.min(vidas + 1, 5); chispas(j.x+15, j.y, '#ff6b8a', 10); }
+      chispas(m.x, m.y, "#ffc400"); tono(988, .08, "sine", .07); setTimeout(() => tono(1319, .12, "sine", .07), 70);
+    }
+    for (const e of N.ene) {
+      if (!e.vivo) continue;
+      if (choca(j, e) && !(e.flash > 0) && (j.inv <= 0 || j.escudo > 0 || P.n === "Sansón")) {
+        if ((j.vy > 0 && j.y + j.h - j.vy <= e.y + 12) || j.escudo > 0 || P.n === "Sansón") derrotar(e);
+        else perderVida(false);
+      }
+    }
+    N.cart.forEach((c, i) => { if (j.x > c[0] && !pasados.has(i)) { pasados.add(i); guardado = c[0]; versiculo = c; versNuevo = descubrir(c[2]); tVers = 300; tono(660, .2, "triangle", .06); } });
+  }
+  jugador = jugadores[0];
+
+  // Proyectiles de los jefes: el escudo (Armadura de Dios, arca de Noé) los destruye; tras un golpe hay unos instantes de invulnerabilidad
+  for (const b of balas) {
+    if (b.espera > 0) { b.espera--; continue; }
+    b.x += b.vx; b.vy += b.g; b.y += b.vy; b.v--;
+    if (b.y > 470) b.v = 0;
+    const caja = {x:b.x - b.r, y:b.y - b.r, w:b.r * 2, h:b.r * 2};
+    for (const pj of jugadores) {
+      if (b.v <= 0 || estado !== 'jugando') break;
+      if (pj.y > ALTO || !choca(pj, caja)) continue;
+      if (pj.escudo > 0) { b.v = 0; chispas(b.x, b.y, '#ffe27a', 8); tono(700, .08, 'triangle', .04); continue; }
+      if (pj.inv > 0) continue;
+      b.v = 0; chispas(b.x, b.y, '#ff4a3a', 10); jugador = pj; perderVida(false);
+    }
+  }
+  jugador = jugadores[0];
+  balas = balas.filter(b => b.v > 0);
+  for (const s of piedras) {
+    for (const q of balas) if (q.tipo !== 'roca' && s.v > 0 && Math.hypot(q.x - s.x, q.y - s.y) < q.r + 8) { s.v = 0; q.v = 0; chispas(q.x, q.y, '#9ad0ff', 8); }   // la honda de David detiene los proyectiles
+    s.x += s.vx; s.v--; const b = {x:s.x-4, y:s.y-4, w:8, h:8};
+    for (const e of N.ene) if (e.vivo && !(e.flash > 0) && s.v > 0 && choca(b, e)) { s.v = 0; jugador = s.dueno || jugadores[0]; derrotar(e, true); }
+    for (const p of plats) if (s.v > 0 && choca(b, rect(p))) s.v = 0;
+  }
+  jugador = jugadores[0];
+  piedras = piedras.filter(s => s.v > 0);
+  balas = balas.filter(b => b.v > 0);      // también los que acaba de detener una piedra
+  if (tVers > 0) tVers--;
+  for (const p of particulas) { p.x += p.vx; p.y += p.vy; p.vy += .25; p.v--; }
+  particulas = particulas.filter(p => p.v > 0);
+  if (temblor > 0) temblor--;
+
+  // El nivel termina cuando todos los jugadores cruzan la meta
+  if (estado === "jugando" && jugadores.every(p => p.x > N.meta)) {
+    estado = (nivel >= LIMITE()) ? "fin" : "pregunta";
+    if (estado === "pregunta") { preg = sigPreg(); msgPreg = ""; }
+    if (dificil) { puntos += 150; if (!prog.dif.includes(nivel)) prog.dif.push(nivel); }
+    if (DEMO && nivel >= LIMITE()) prog.demoFin = true;
+    const antes = prog.max; prog.max = Math.max(prog.max, Math.min(nivel + 1, LIMITE())); nuevoPj = PERSONAJES.find(p => p.des > antes && p.des <= prog.max); mejorar(); guardar();
+    melodia([523, 659, 784, 1047]);
+  }
+  // La cámara sigue al que va delante; si el otro se queda atrás fuera de pantalla, vuelve junto a él
+  const lider = jugadores.reduce((a, b) => b.x > a.x ? b : a);
+  camara = Math.max(0, Math.min(lider.x - ANCHO/3, N.fin - ANCHO));
+  for (const p of jugadores) if (p !== lider && p.x < camara - 60) { p.x = lider.x - 30; p.y = lider.y - 60; p.vy = 0; p.inv = 60; }
+}
+function derrotar(e, piedra) {
+  const j = jugador;
+  if (e.jefe && --e.hp > 0) { e.flash = 50; if (!piedra) j.vy = -10; chispas(e.x+35, e.y+10, "#ffc400", 16); tono(180, .2, "sawtooth", .07, 70); temblor = 10; return; }
+  e.vivo = false; if (!piedra) j.vy = Math.min(j.vy, -9); puntos += e.jefe ? 200 : 50;
+  chispas(e.x + e.w/2, e.y + 14, "#ff4a3a", e.jefe ? 30 : 14); tono(220, .15, "sawtooth", .06, 80); temblor = e.jefe ? 20 : 6;
+  premio(e.jefe); if (e.jefe) balas = [];
+  if (e.jefe && versiculo) versiculo[1] = '¡Venciste a ' + e.nombre + '! · ' + versiculo[1];
+}
+// Premio al vencer: versículo especial, corazón de vida o armadura de Dios
+function premio(grande) {
+  const j = jugador, q = Math.random();
+  if (grande || q < .5) { const v = EXTRA[Math.random()*EXTRA.length|0]; versiculo = [0, v[0], v[1]]; versNuevo = descubrir(v[1]); puntos += 25; melodia([784, 988]); }
+  else if (q < .75) { vidas = Math.min(vidas + 1, 5); versNuevo = false; versiculo = [0, "¡Corazón de gozo!", "+1 vida", true]; melodia([660, 880]); }
+  else { j.escudo = 480; versNuevo = false; versiculo = [0, "Armadura de Dios (Efesios 6:11)", "Invencible 8 segundos: toca a los enemigos para vencerlos", true]; melodia([523, 784, 1047]); }
+  if (grande) vidas = Math.min(vidas + 1, 5);
+  tVers = 300;
+}
+// Jehová levanta al jugador la primera vez que cae al vacío en cada nivel
+function rescatar(pj) {
+  renacer(pj); pj.inv = 120; rescateT = 110; rescatado = pj; temblor = 6;
+  versiculo = [0, "Jehová te levantó · Salmos 145:14", "El Señor sostiene a todos los abatidos y levanta a todos los que están doblados."]; versNuevo = false; tVers = 260;
+  chispas(pj.x + 15, pj.y + 20, "#ffe27a", 24); melodia([523, 784, 1047, 1319]);
+}
+function perderVida(caida) {
+  if (caida && rescates > 0) { rescates--; rescatar(jugador); return; }
+  vidas--; temblor = 10; tono(160, .35, "sawtooth", .07, 60);
+  if (vidas <= 0) { estado = "perdiste"; mejorar(); guardar(); }
+  else if (caida) renacer(jugador);
+  else { jugador.vy = -8; jugador.inv = 90; }
+}
+
+// ============ 6. DIBUJO ============
+function texto(t, x, y, tam, col, al = "center", est = "") {
+  ctx.font = est + " " + tam + "px Georgia, serif"; ctx.fillStyle = col; ctx.textAlign = al; ctx.fillText(tr(t), x, y);
+}
+// Jehová se representa como una columna de luz, sin figura humana
+function luz(j) {
+  const cx = j.x + 15, cy = j.y + 22, p = Math.sin(tiempo/10) * 3;
+  const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, 46 + p);
+  g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.45, 'rgba(255,225,120,.75)'); g.addColorStop(1, 'rgba(255,200,60,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 46 + p, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.fillRect(j.x + 8, j.y, 14, j.h);
+}
+function estrella(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI/2 + i*Math.PI/5, rr = i % 2 ? r*.45 : r; ctx.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr); }
+  ctx.closePath(); ctx.fill();
+}
+// Paisajes de fondo: cada nivel tiene el suyo
+function decorar(d, cam) {
+  const px = (i, k, v) => ((i*k - cam*v) % 960 + 960) % 960;
+  if (d === 'estrellas') { ctx.fillStyle = '#fff'; for (let i = 0; i < 70; i++) { ctx.globalAlpha = .5 + .5*Math.sin(tiempo/20 + i); ctx.fillRect(px(i, 97, .1), (i*53) % 300, 2, 2); } ctx.globalAlpha = 1; }
+  else if (d === 'lluvia') { ctx.fillStyle = 'rgba(210,225,255,.55)'; for (let i = 0; i < 80; i++) ctx.fillRect(px(i, 53, .3), (tiempo*14 + i*41) % 540, 2, 14); }
+  else if (d === 'arco') { const c = ['#ff6b6b','#ffa94d','#ffe066','#69db7c','#4dabf7','#9775fa']; ctx.lineWidth = 12; ctx.globalAlpha = .55; c.forEach((k, n) => { ctx.strokeStyle = k; ctx.beginPath(); ctx.arc(480, 470, 340 - n*13, Math.PI, 0); ctx.stroke(); }); ctx.globalAlpha = 1; }
+  else if (d === 'olas') { ctx.fillStyle = 'rgba(255,255,255,.3)'; for (let i = 0; i < 30; i++) ctx.fillRect(px(i, 67, .5), 380 + (i%4)*22 + Math.sin(tiempo/20 + i)*3, 44, 4); }
+  else if (d === 'montes') { ctx.fillStyle = 'rgba(60,50,80,.35)'; for (let i = 0; i < 5; i++) { const x = px(i, 260, .25) - 260; ctx.beginPath(); ctx.moveTo(x, 540); ctx.lineTo(x+150, 250 + (i%3)*35); ctx.lineTo(x+300, 540); ctx.fill(); } }
+  else if (d === 'arboles') { for (let i = 0; i < 7; i++) { const x = px(i, 150, .55); ctx.fillStyle = 'rgba(90,60,40,.5)'; ctx.fillRect(x, 400, 10, 60); ctx.fillStyle = 'rgba(40,120,60,.55)'; ctx.beginPath(); ctx.arc(x+5, 392, 30, 0, 7); ctx.fill(); } }
+  else if (d === 'ciudad') { ctx.fillStyle = 'rgba(90,70,60,.35)'; for (let i = 0; i < 8; i++) { const x = px(i, 160, .4), h = 120 + (i*37) % 90; ctx.fillRect(x, 460-h, 60, h); for (let m = 0; m < 3; m++) ctx.fillRect(x + m*24, 450-h, 12, 10); } }
+}
+function fondo(L, cam, pg) {
+  const c = ctx.createLinearGradient(0,0,0,ALTO); c.addColorStop(0, L.c1); c.addColorStop(.75, L.c2);
+  ctx.fillStyle = c; ctx.fillRect(0,0,ANCHO,ALTO);
+  ctx.fillStyle = L.sol; ctx.beginPath(); ctx.arc(780, 330 - pg*220, 55, 0, 7); ctx.fill();
+  decorar(L.deco, cam);
+  ctx.fillStyle = "rgba(255,255,255,.45)";
+  for (let i = 0; i < 6; i++) { const x = ((i*280 - cam*.2) % 1680 + 1680) % 1680 - 200; ctx.beginPath(); ctx.ellipse(x, 90 + (i%3)*45, 70, 20, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = L.col;
+  for (let i = -1; i < 7; i++) { const x = i*320 - (cam*.35 % 320); ctx.beginPath(); ctx.arc(x+160, 540, 190, Math.PI, 0); ctx.fill(); }
+}
+// Reparte un texto en líneas que no superen un ancho (para que los versículos largos no se salgan)
+function envolver(t, ancho, fuente) {
+  ctx.font = fuente; t = trq(String(t));
+  const lin = []; let l = '';
+  for (const p of String(t).split(' ')) {
+    const prueba = l ? l + ' ' + p : p;
+    if (ctx.measureText(prueba).width > ancho && l) { lin.push(l); l = p; } else l = prueba;
+  }
+  if (l) lin.push(l);
+  return lin;
+}
+const circulo = (x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+function dibujarBalas() {
+  for (const b of balas) {
+    if (b.espera > 0) {     // aviso: sombra en el suelo donde va a caer la roca
+      const k = 1 - b.espera / 45; ctx.fillStyle = 'rgba(0,0,0,' + (.15 + .25 * k) + ')';
+      ctx.beginPath(); ctx.ellipse(b.x, 458, 14 + 16 * k, 5, 0, 0, 7); ctx.fill(); continue;
+    }
+    if (b.tipo === 'veneno') { ctx.fillStyle = '#4aa84a'; circulo(b.x, b.y, b.r); ctx.fillStyle = '#c9f06a'; circulo(b.x - 2, b.y - 2, b.r * .45); }
+    else if (b.tipo === 'ola') {
+      ctx.fillStyle = '#4a8ad9'; ctx.beginPath(); ctx.arc(b.x, b.y + b.r, b.r * 1.2, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(b.x - b.r * .8, b.y - 2, b.r * 1.2, 3);
+    } else if (b.tipo === 'onda') {
+      ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(b.x - b.r, b.y + b.r); ctx.lineTo(b.x - b.r * .2, b.y - b.r * 1.4 - Math.sin(tiempo/3) * 3); ctx.lineTo(b.x + b.r * .4, b.y); ctx.lineTo(b.x + b.r, b.y + b.r); ctx.fill();
+      ctx.fillStyle = '#ffe27a'; ctx.beginPath(); ctx.moveTo(b.x - b.r * .4, b.y + b.r); ctx.lineTo(b.x, b.y - b.r * .4); ctx.lineTo(b.x + b.r * .4, b.y + b.r); ctx.fill();
+    } else if (b.tipo === 'orbe') {
+      ctx.fillStyle = 'rgba(150,80,220,.35)'; circulo(b.x, b.y, b.r * 1.7); ctx.fillStyle = '#2a1a4a'; circulo(b.x, b.y, b.r); ctx.fillStyle = '#e0a0ff'; circulo(b.x - 2, b.y - 2, b.r * .35);
+    } else if (b.tipo === 'lanza') {
+      const a = Math.atan2(b.vy, b.vx), c = Math.cos(a), s = Math.sin(a);
+      ctx.strokeStyle = '#6b4426'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(b.x - c * 22, b.y - s * 22); ctx.lineTo(b.x + c * 8, b.y + s * 8); ctx.stroke();
+      ctx.fillStyle = '#d8d8e0'; ctx.beginPath(); ctx.moveTo(b.x + c * 18, b.y + s * 18); ctx.lineTo(b.x + c * 6 - s * 5, b.y + s * 6 + c * 5); ctx.lineTo(b.x + c * 6 + s * 5, b.y + s * 6 - c * 5); ctx.fill();
+    } else if (b.tipo === 'roca') { ctx.fillStyle = '#7a7a82'; circulo(b.x, b.y, b.r); ctx.fillStyle = 'rgba(0,0,0,.25)'; circulo(b.x + 3, b.y + 3, b.r * .5); }
+    else { ctx.fillStyle = 'rgba(255,120,30,.4)'; circulo(b.x, b.y, b.r * 1.6); ctx.fillStyle = '#ff6a1a'; circulo(b.x, b.y, b.r); ctx.fillStyle = '#ffe27a'; circulo(b.x, b.y, b.r * .5); }
+  }
+}
+// Pantalla de la galería: 4 niveles por página y, al final, los versículos de premio
+function galeria() {
+  ctx.fillStyle = "rgba(43,33,64,.84)"; ctx.fillRect(0, 0, ANCHO, ALTO);
+  const hay = todosLosVers.filter(v => prog.vers.includes(v.texto)).length, n = paginasGaleria(), nivPag = Math.ceil(NIVELES.length / 4);
+  texto("Galería de versículos", ANCHO/2, 44, 34, "#fff4dc", "center", "bold");
+  texto(hay + " de " + todosLosVers.length + " descubiertos", ANCHO/2, 74, 18, "#ffc400", "center", "bold");
+  texto("Textos bíblicos: Reina-Valera 1909, ortografía actualizada (dominio público)", ANCHO/2, 93, 12, "#d9cfb8", "center", "italic");
+  ctx.fillStyle = "rgba(255,244,220,.2)"; ctx.fillRect(14, 12, 150, 38); texto("◀ Volver", 89, 38, 18, "#fff4dc", "center", "bold");
+  const linea = (cita, txt, yy) => {
+    const ok = prog.vers.includes(txt), t = tr(ok ? cita + " — " + txt : cita + " — sin descubrir"), est = ok ? "italic" : "";
+    let s = 15; ctx.font = est + " " + s + "px Georgia, serif";
+    while (ctx.measureText(t).width > 880 && s > 11) { s--; ctx.font = est + " " + s + "px Georgia, serif"; }
+    texto(t, 40, yy, s, ok ? "#fff4dc" : "rgba(255,244,220,.4)", "left", est);
+  };
+  let y = 112;
+  if (pagGal < nivPag) {
+    for (let i = pagGal * 4; i < Math.min(NIVELES.length, pagGal * 4 + 4); i++) {
+      texto((i + 1) + ". " + NIVELES[i].n, 40, y, 18, "#ffc400", "left", "bold"); y += 24;
+      for (const v of NIVELES[i].vers) { linea(v[0], v[1], y); y += 22; }
+      y += 10;
+    }
+  } else {
+    texto("Versículos de premio (al vencer enemigos)", 40, y, 18, "#ffc400", "left", "bold"); y += 26;
+    for (let k = (pagGal - nivPag) * 14; k < Math.min(EXTRA.length, (pagGal - nivPag) * 14 + 14); k++) { linea(EXTRA[k][0], EXTRA[k][1], y); y += 22; }
+  }
+  texto("Página " + (pagGal + 1) + " de " + n + "  ·  ◀ ▶ o toca los lados para cambiar  ·  Esc para volver", ANCHO/2, 530, 16, "#fff4dc");
+}
+function dibujarPj(j, idx) {
+  const P = j.P, d = j.mira;
+  // Aura dorada con la armadura de Dios; el personaje parpadea si es invulnerable
+  if (j.escudo > 0) { ctx.fillStyle = "rgba(255,230,120," + (j.escudo < 90 && Math.floor(j.escudo/6) % 2 ? .15 : .4) + ")"; ctx.beginPath(); ctx.arc(j.x+15, j.y+22, 42, 0, 7); ctx.fill(); }
+  if (rescateT > 0 && rescatado === j) luz(j);
+  if (!(j.inv > 0 && Math.floor(j.inv/5) % 2)) {
+    {
+      ctx.fillStyle = "#8a5a3b"; ctx.fillRect(j.x + (d>0 ? 27 : 1), j.y-6, 3, j.h+6);
+      ctx.fillStyle = P.tun; ctx.fillRect(j.x+3, j.y+14, j.w-6, j.h-14);
+      ctx.fillStyle = P.cin; ctx.fillRect(j.x+3, j.y+22, j.w-6, 8);
+      ctx.fillStyle = P.cap; ctx.beginPath(); ctx.arc(j.x+15, j.y+10, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.arc(j.x+15+d*2, j.y+11, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = "#2b2140"; ctx.fillRect(j.x+13+d*4, j.y+9, 3, 3);
+    }
+  }
+  if (jugadores.length > 1) texto("J" + (idx + 1), j.x + 15, j.y - 14, 16, idx ? "#7ad0ff" : "#ffc400", "center", "bold");
+}
+function dibujar() {
+  if (estado === "menu") { if (!menuVisto) { menuVisto = true; pagMenu = Math.min(Math.floor(prog.max / 18), Math.ceil(NIVELES.length / 18) - 1); } fondo(NIVELES[0], tiempo*2, .3); menu(); return; }
+  if (estado === "galeria") { fondo(NIVELES[0], tiempo*2, .3); galeria(); return; }
+  menuVisto = false;
+  const L = NIVELES[nivel], j = jugadores.reduce((a, b) => b.x > a.x ? b : a);
+  fondo(L, camara, Math.min(j.x / N.meta, 1));
+  ctx.save(); ctx.translate(-camara + (temblor ? (Math.random()-.5)*temblor : 0), 0);
+  for (const [x,y,w,h] of N.suelo.concat(N.plat)) { ctx.fillStyle = L.suelo; ctx.fillRect(x,y,w,h); ctx.fillStyle = L.tope; ctx.fillRect(x,y,w,10); }
+  N.cart.forEach((c, i) => {
+    ctx.fillStyle = "#6b4426"; ctx.fillRect(c[0]-3, 410, 6, 50);
+    ctx.fillStyle = pasados.has(i) ? "#ffe9a8" : "#f1e6d0"; ctx.fillRect(c[0]-26, 392, 52, 30);
+    ctx.fillStyle = "#6b4426"; ctx.fillRect(c[0]-2, 397, 4, 20); ctx.fillRect(c[0]-8, 403, 16, 4);
+  });
+  ctx.fillStyle = "#ffc400";
+  for (const m of estrellas) if (!m.cogida) estrella(m.x, m.y + Math.sin(tiempo/15 + m.x)*3, 12);
+  for (const e of N.ene) if (e.vivo) {
+    if (e.jefe) { dibujarJefe(e); continue; }
+    ctx.fillStyle = "#2a2140"; ctx.beginPath(); ctx.arc(e.x+17, e.y+16, 17, Math.PI, 0); ctx.fill(); ctx.fillRect(e.x, e.y+16, e.w, 12);
+    if (e.vuela) { const a = Math.sin(tiempo/4)*8; ctx.beginPath(); ctx.moveTo(e.x,e.y+12); ctx.lineTo(e.x-14,e.y+2+a); ctx.lineTo(e.x+4,e.y+20); ctx.moveTo(e.x+e.w,e.y+12); ctx.lineTo(e.x+e.w+14,e.y+2+a); ctx.lineTo(e.x+e.w-4,e.y+20); ctx.fill(); }
+    ctx.fillStyle = "#ff4a3a"; ctx.fillRect(e.x+8, e.y+9, 6, 6); ctx.fillRect(e.x+20, e.y+9, 6, 6);
+  }
+  dibujarBalas();
+  // Meta: rayos de luz y, en el último nivel, la cruz
+  const mx = N.meta + 80;
+  ctx.fillStyle = "rgba(255,235,150,.35)";
+  for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(mx, 300); ctx.lineTo(mx+i*90-25, 40); ctx.lineTo(mx+i*90+25, 40); ctx.fill(); }
+  if (L.cruz) { ctx.fillStyle = "#6b4426"; ctx.fillRect(mx-8, 310, 16, 150); ctx.fillRect(mx-42, 340, 84, 16); }
+  else { ctx.strokeStyle = "#ffe9a8"; ctx.lineWidth = 12; ctx.beginPath(); ctx.arc(mx, 400, 50, Math.PI, 0); ctx.lineTo(mx+50, 460); ctx.moveTo(mx-50, 400); ctx.lineTo(mx-50, 460); ctx.stroke(); ctx.fillStyle = "rgba(255,245,190,.7)"; ctx.fillRect(mx-44, 400, 88, 60); }
+  jugadores.forEach((pj, idx) => dibujarPj(pj, idx));
+  ctx.fillStyle = "#6b6b7a"; for (const s of piedras) { ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, 7); ctx.fill(); }
+  for (const p of particulas) { ctx.globalAlpha = Math.min(1, p.v/20); ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, 5, 5); }
+  ctx.globalAlpha = 1; ctx.restore();
+
+  // Marcador
+  ctx.fillStyle = "rgba(43,33,64,.55)"; ctx.fillRect(0, 0, ANCHO, 48);
+  texto("♥".repeat(Math.max(vidas,0)) + "   ★ " + puntos + (dificil ? "   Difícil" : ""), 18, 32, 22, "#fff4dc", "left", "bold");
+  texto("Nivel " + (nivel+1) + " · " + L.n, ANCHO/2, 32, 22, "#fff4dc", "center", "bold");
+  if (rescates > 0) { const gl = ctx.createRadialGradient(676, 26, 1, 676, 26, 13); gl.addColorStop(0, "#ffffff"); gl.addColorStop(1, "rgba(255,226,122,0)"); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(676, 26, 13, 0, 7); ctx.fill(); }
+  ctx.fillStyle = "rgba(255,244,220,.3)"; ctx.fillRect(700, 20, 240, 10);
+  ctx.fillStyle = "#ffc400"; ctx.fillRect(700, 20, 240 * Math.min(j.x / N.meta, 1), 10);
+  if (N.ene.some(e => e.jefe && e.vivo) && j.x > N.meta - 700) { ctx.fillStyle = "rgba(43,33,64,.6)"; ctx.fillRect(0, 486, ANCHO, 36); texto("Jefe: " + (N.ene.find(e => e.jefe && e.vivo) || {}).nombre + " · ¡salta encima para abrir la meta!", ANCHO/2, 512, 20, "#fff4dc", "center", "bold"); }
+
+  if (tVers > 0 && estado === "jugando") {
+    const lin = envolver(versiculo[3] ? versiculo[2] : "“" + versiculo[2] + "”", 640, "italic 24px Georgia, serif"), alto = 40 + lin.length * 28 + 22;
+    ctx.globalAlpha = Math.min(1, tVers/40); ctx.fillStyle = "#fff4dc"; ctx.fillRect(130, 62, 700, alto);
+    ctx.strokeStyle = "#6b4426"; ctx.lineWidth = 3; ctx.strokeRect(130, 62, 700, alto);
+    lin.forEach((l, i) => texto(l, ANCHO/2, 62 + 36 + i*28, 24, "#2b2140", "center", "italic"));
+    texto(versiculo[1], ANCHO/2, 62 + 36 + lin.length*28 + 4, 20, "#2b2140", "center", "bold");
+    if (versNuevo) texto("★ Nuevo en tu galería", 816, 62 + alto - 8, 14, "#9a6a00", "right", "bold");
+    ctx.globalAlpha = 1;
+  }
+  if (estado === "intro") {
+    ctx.fillStyle = "rgba(43,33,64,.82)"; ctx.fillRect(0, 0, ANCHO, ALTO);
+    const lin = envolver("“" + L.vers[0][1] + "”", 820, "italic 26px Georgia, serif");
+    texto("Nivel " + (nivel+1), ANCHO/2, 170, 28, "#ffc400", "center", "bold"); texto(L.n, ANCHO/2, 230, 56, "#fff4dc", "center", "bold");
+    lin.forEach((l, i) => texto(l, ANCHO/2, 290 + i*32, 26, "#fff4dc", "center", "italic"));
+    const y = 290 + lin.length * 32 + 4;
+    texto(L.vers[0][0], ANCHO/2, y, 20, "#fff4dc"); texto("Jefe: " + jefeDe(L).n, ANCHO/2, y + 50, 22, "#ffc400", "center", "bold");
+  }
+  if (estado === "pregunta") {
+    ctx.fillStyle = "rgba(43,33,64,.9)"; ctx.fillRect(0, 0, ANCHO, ALTO);
+    texto("Pregunta bíblica", ANCHO/2, 110, 26, "#ffc400", "center", "bold");
+    texto(preg[0], ANCHO/2, 185, 32, "#fff4dc", "center", "bold");
+    preg[1].forEach((o, k) => { ctx.fillStyle = "#fff4dc"; ctx.fillRect(230, 280 + k*62, 500, 52); texto((k+1) + ". " + o, ANCHO/2, 314 + k*62, 24, "#2b2140", "center", "bold"); });
+    texto("Pulsa 1, 2 o 3, o toca la respuesta", ANCHO/2, 505, 18, "#fff4dc");
+  }
+  if (estado === "pausa") { ctx.fillStyle = "rgba(43,33,64,.8)"; ctx.fillRect(0,0,ANCHO,ALTO); texto("Pausa", ANCHO/2, 250, 56, "#fff4dc", "center", "bold"); texto("Pulsa P o toca la pantalla para seguir", ANCHO/2, 300, 22, "#fff4dc"); }
+  if (estado === "nivelok" || estado === "fin" || estado === "perdiste") {
+    ctx.fillStyle = "rgba(43,33,64,.85)"; ctx.fillRect(0,0,ANCHO,ALTO);
+    const t = estado === "nivelok" ? ["¡Nivel completado!", "“Bien hecho, buen siervo. Como fuiste fiel en lo poco…”  Lucas 19:17"]
+      : estado === "fin" ? (DEMO ? ["¡Has terminado la demo!", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21"] : ["¡Llegaste a la Nueva Jerusalén!", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21"]) : ["Fin del camino", "“Después de mi caída seré levantado.”  Miqueas 7:8"];
+    texto(t[0], ANCHO/2, 200, 48, "#fff4dc", "center", "bold"); texto(t[1], ANCHO/2, 252, 24, "#fff4dc", "center", "italic");
+    if (estado === "nivelok" && msgPreg) texto(msgPreg, ANCHO/2, 282, 20, "#fff4dc", "center", "bold");
+    texto("★ " + puntos + "   Mejor: " + mejor() + (dificil ? "  (modo difícil)" : ""), ANCHO/2, 305, 24, "#ffc400", "center", "bold");
+    if (DEMO && estado === "fin") {
+      texto("Juego completo: 40 niveles, 40 jefes y 12 personajes · 2,99 €", ANCHO/2, 331, 18, "#ffc400", "center", "bold");
+      ctx.fillStyle = "rgba(255,196,0,.95)"; ctx.fillRect(230, 384, 240, 44); texto("Comprar · 2,99 € (B)", 350, 413, 18, "#2b2140", "center", "bold");
+      ctx.fillStyle = "rgba(255,244,220,.22)"; ctx.fillRect(490, 384, 240, 44); texto("Tengo un código (K)", 610, 413, 18, "#fff4dc", "center", "bold");
+    }
+    if (estado === "nivelok" && nuevoPj) texto("¡Nuevo personaje: " + nuevoPj.n + "!", ANCHO/2, 337, 22, "#ffc400", "center", "bold");
+    texto(estado === "nivelok" ? "Enter o toca para el siguiente nivel" : estado === "fin" ? "Enter o toca para volver al menú" : "Enter o toca para reintentar el nivel", ANCHO/2, 355, 20, "#fff4dc");
+    texto("Textos: Reina-Valera 1909, ortografía actualizada (dominio público). Música y gráficos originales.", ANCHO/2, 505, 13, "#d9cfb8", "center", "italic");
+  }
+}
+function menu() {
+  ctx.fillStyle = "rgba(43,33,64,.55)"; ctx.fillRect(0,0,ANCHO,ALTO);
+  texto("El Último Discípulo", ANCHO/2, 150, 62, "#fff4dc", "center", "bold");
+  [[20, "Dificultad: " + (dificil ? "Difícil" : "Normal") + " (H)", dificil], [330, "Modo: " + (modo2 ? "2 jugadores" : "1 jugador") + " (T)", modo2],
+   [640, "Galería " + todosLosVers.filter(v => prog.vers.includes(v.texto)).length + "/" + todosLosVers.length + " (G)", false]].forEach(([bx, t, on]) => {
+    ctx.fillStyle = on ? "rgba(255,196,0,.92)" : "rgba(255,244,220,.2)"; ctx.fillRect(bx, 10, 300, 40);
+    texto(t, bx + 150, 36, 17, on ? "#2b2140" : "#fff4dc", "center", "bold");
+  });
+  ctx.fillStyle = "rgba(255,244,220,.2)"; ctx.fillRect(790, 60, 160, 32); texto(idioma === "en" ? "Language: EN (L)" : "Idioma: ES (L)", 870, 82, 15, "#fff4dc", "center", "bold");
+  if (modo2) texto("J1: " + quien().n + " (flechas, espacio, X)   ·   J2: " + quien2().n + " (A D W, S o botones)", ANCHO/2, DEMO ? 103 : 72, DEMO ? 14 : 16, "#fff4dc");
+  texto("Un viaje de cuarenta etapas por la Biblia", ANCHO/2, 200, 26, "#fff4dc", "center", "italic");
+  if (DEMO) {
+    ctx.fillStyle = "rgba(255,196,0,.92)"; ctx.fillRect(20, 54, 220, 34); texto("Comprar · 2,99 € (B)", 130, 77, 16, "#2b2140", "center", "bold");
+    ctx.fillStyle = "rgba(255,244,220,.2)"; ctx.fillRect(250, 54, 190, 34); texto("Tengo un código (K)", 345, 77, 16, "#fff4dc", "center", "bold");
+    texto("DEMO GRATUITA · 5 niveles", 590, 77, 15, "#ffc400", "center", "bold");
+  }
+  { const P = quien(), k = PERSONAJES.filter(p => p.des <= prog.max).length;
+    ctx.fillStyle = "rgba(255,244,220,.15)"; ctx.fillRect(280, 215, 400, 80);
+    ctx.fillStyle = P.tun; ctx.fillRect(310, 245, 24, 38); ctx.fillStyle = P.cin; ctx.fillRect(310, 255, 24, 7);
+    ctx.fillStyle = P.cap; ctx.beginPath(); ctx.arc(322, 240, 11, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.arc(324, 241, 7, 0, 7); ctx.fill();
+    texto(P.n, 510, 247, 28, "#fff4dc", "center", "bold"); texto(P.hab, 510, 276, 16, "#fff4dc");
+    texto("◀", 262, 264, 28, "#ffc400"); texto("▶", 698, 264, 28, "#ffc400");
+    texto("Personajes " + k + "/" + PERSONAJES.length + " · ◀ ▶ para cambiar · Enter o toca un nivel para empezar", ANCHO/2, 318, 17, "#ffc400", "center", "bold"); }
+  for (let i = pagMenu*18; i < Math.min(NIVELES.length, pagMenu*18 + 18); i++) {
+    const k = i - pagMenu*18, x = 12 + (k%6)*156, y = 330 + ((k/6)|0)*64, abierto = i <= prog.max;
+    ctx.fillStyle = abierto ? "#fff4dc" : "rgba(255,244,220,.25)"; ctx.fillRect(x, y, 148, 54);
+    texto((abierto ? (i+1) + ". " : "🔒 ") + NIVELES[i].n, x+74, y+32, 14, abierto ? "#2b2140" : "#fff4dc", "center", "bold");
+    if (prog.dif.includes(i)) texto("★", x + 134, y + 18, 16, "#d99a00", "center", "bold");
+  }
+  texto("Página " + (pagMenu+1) + "/" + Math.ceil(NIVELES.length/18) + " (▲▼ o toca aquí)  ·  Mejor: " + mejor() + "  ·  M silencio  P pausa", ANCHO/2, 526, 18, "#fff4dc");
+}
+
+// ============ 7. BUCLE PRINCIPAL ============
+function dibujarJefe(e) {
+  const x = e.x, y = e.y, w = e.w, h = e.h, dir = e.dir, blanco = e.flash > 0 && Math.floor(e.flash/4) % 2;
+  const c = blanco ? '#ffffff' : e.col, c2 = blanco ? '#ffffff' : e.col2;
+  const ojos = (ax, ay, bx, by, s) => { ctx.fillStyle = c2; ctx.fillRect(ax, ay, s, s); ctx.fillRect(bx, by, s, s); };
+  ctx.fillStyle = c;
+  if (e.tipo === 'serpiente') {
+    for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + 14 + i*14, y + h - 14 + Math.sin(tiempo/6 + i) * 6, 13 - i*.5, 0, 7); ctx.fill(); }
+    const hx = dir > 0 ? x + w - 12 : x + 12;
+    ctx.beginPath(); ctx.arc(hx, y + h - 24, 16, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#ff4a3a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, y + h - 20); ctx.lineTo(hx + dir*20, y + h - 20); ctx.stroke();
+    ojos(hx - 7, y + h - 31, hx + 2, y + h - 31, 5);
+  } else if (e.tipo === 'piedra') {
+    ctx.fillRect(x, y + 8, w, h - 8); ctx.beginPath(); ctx.arc(x + w/2, y + 10, w/2, Math.PI, 0); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 18, y + 4); ctx.lineTo(x + 30, y + 34); ctx.lineTo(x + 20, y + 60); ctx.moveTo(x + w - 20, y + 10); ctx.lineTo(x + w - 34, y + 44); ctx.stroke();
+    ojos(x + w*.28, y + h*.42, x + w*.62, y + h*.42, 10);
+  } else if (e.tipo === 'gigante') {
+    ctx.fillRect(x + 22, y + h - 28, 18, 28); ctx.fillRect(x + w - 40, y + h - 28, 18, 28); ctx.fillRect(x + 10, y + 34, w - 20, h - 60);
+    ctx.beginPath(); ctx.arc(x + w/2, y + 22, 22, 0, 7); ctx.fill();
+    ctx.fillStyle = blanco ? '#fff' : '#8a8a99'; ctx.beginPath(); ctx.arc(x + w/2, y + 20, 25, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = blanco ? '#fff' : '#6b4426'; ctx.fillRect(x + w - 4, y - 22, 5, h + 22);
+    ctx.fillStyle = blanco ? '#fff' : '#cfcfd8'; ctx.beginPath(); ctx.moveTo(x + w - 8, y - 22); ctx.lineTo(x + w + 3, y - 22); ctx.lineTo(x + w - 2, y - 40); ctx.fill();
+    ojos(x + w/2 - 12, y + 22, x + w/2 + 4, y + 22, 7);
+  } else if (e.tipo === 'dragon') {
+    const a = Math.sin(tiempo/5) * 14, hx = dir > 0 ? x + w - 16 : x + 16;
+    ctx.beginPath(); ctx.moveTo(x + w*.35, y + h*.4); ctx.lineTo(x + w*.15, y - 20 + a); ctx.lineTo(x + w*.6, y + h*.35);
+    ctx.moveTo(x + w*.5, y + h*.4); ctx.lineTo(x + w*.72, y - 26 + a); ctx.lineTo(x + w*.82, y + h*.4); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + w/2, y + h*.62, w/2, h*.36, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(hx, y + h*.36, 20, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(hx - 12, y + h*.2); ctx.lineTo(hx - 18, y - 6); ctx.lineTo(hx - 2, y + h*.14); ctx.moveTo(hx + 12, y + h*.2); ctx.lineTo(hx + 18, y - 6); ctx.lineTo(hx + 2, y + h*.14); ctx.fill();
+    ojos(hx - 10, y + h*.3, hx + 3, y + h*.3, 7);
+  } else if (e.tipo === 'idolo') {
+    ctx.fillRect(x + 8, y + h*.38, w - 16, h*.62); ctx.beginPath(); ctx.arc(x + w/2, y + h*.3, 20, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x + w/2 - 14, y + h*.2); ctx.lineTo(x + w/2 - 26, y - 6); ctx.lineTo(x + w/2 - 4, y + h*.1);
+    ctx.moveTo(x + w/2 + 14, y + h*.2); ctx.lineTo(x + w/2 + 26, y - 6); ctx.lineTo(x + w/2 + 4, y + h*.1); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.fillRect(x + 14, y + h*.45, 9, h*.4);
+    ojos(x + w/2 - 11, y + h*.26, x + w/2 + 4, y + h*.26, 7);
+  } else if (e.tipo === 'agua') {
+    ctx.beginPath(); ctx.moveTo(x, y + h);
+    for (let i = 0; i <= w; i += 6) ctx.lineTo(x + i, y + 14 + Math.sin(tiempo/6 + i/9) * 7);
+    ctx.lineTo(x + w, y + h); ctx.fill();
+    ojos(x + w*.3, y + h*.45, x + w*.62, y + h*.45, 9);
+  } else if (e.tipo === 'corona') {
+    ctx.beginPath(); ctx.arc(x + w/2, y + h*.55, w*.46, Math.PI, 0); ctx.fill(); ctx.fillRect(x + 3, y + h*.55, w - 6, h*.45);
+    ctx.fillStyle = blanco ? '#fff' : '#ffc400'; ctx.beginPath(); ctx.moveTo(x + w*.22, y + h*.2); ctx.lineTo(x + w*.28, y - 6); ctx.lineTo(x + w*.42, y + h*.14);
+    ctx.lineTo(x + w*.5, y - 12); ctx.lineTo(x + w*.58, y + h*.14); ctx.lineTo(x + w*.72, y - 6); ctx.lineTo(x + w*.78, y + h*.2); ctx.closePath(); ctx.fill();
+    ojos(x + w*.28, y + h*.42, x + w*.6, y + h*.42, 8);
+  } else {   // sombra: figura oscura con cuernos
+    ctx.beginPath(); ctx.arc(x + w/2, y + 34, 35, Math.PI, 0); ctx.fill(); ctx.fillRect(x, y + 34, w, 26);
+    ctx.beginPath(); ctx.moveTo(x + 8, y + 10); ctx.lineTo(x + 2, y - 14); ctx.lineTo(x + 22, y + 2);
+    ctx.moveTo(x + w - 8, y + 10); ctx.lineTo(x + w - 2, y - 14); ctx.lineTo(x + w - 22, y + 2); ctx.fill();
+    ojos(x + 16, y + 22, x + w - 28, y + 22, 12);
+  }
+  // Barra de vida y nombre (más arriba si el jefe tiene alas)
+  const up = e.tipo === 'dragon' ? 18 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(x, y - 28 - up, w, 8);
+  ctx.fillStyle = '#ffc400'; ctx.fillRect(x, y - 28 - up, w * e.hp / e.hpMax, 8);
+  ctx.font = 'bold 16px Georgia, serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#2b2140';
+  ctx.strokeText(tr(e.nombre), x + w/2, y - 34 - up); ctx.fillStyle = '#fff4dc'; ctx.fillText(tr(e.nombre), x + w/2, y - 34 - up);
+  if (e.aviso && !blanco) { ctx.fillStyle = '#ff4a3a'; ctx.beginPath(); ctx.arc(x + w/2, y - 66 - up, 13, 0, 7); ctx.fill(); texto('!', x + w/2, y - 59 - up, 20, '#ffffff', 'center', 'bold'); }   // aviso: va a atacar
+}
+
+// ============ MÚSICA ORIGINAL ============
+// La compone el propio código al momento (escalas, acordes y motivos generados desde una semilla por nivel).
+// No usa canciones, melodías ni grabaciones existentes. Cada paisaje tiene su ambiente; al acercarte a un jefe se acelera.
+const ESCALAS = {pent:[0,2,4,7,9], mayor:[0,2,4,5,7,9,11], menor:[0,2,3,5,7,8,10], dorica:[0,2,3,5,7,9,10], frigia:[0,1,3,5,7,8,10], lidia:[0,2,4,6,7,9,11]};
+const ESTILOS = {
+  arboles:{esc:'pent', bpm:84, base:60}, montes:{esc:'mayor', bpm:96, base:57}, olas:{esc:'lidia', bpm:78, base:55},
+  ciudad:{esc:'dorica', bpm:90, base:57}, estrellas:{esc:'menor', bpm:68, base:52}, lluvia:{esc:'menor', bpm:74, base:55},
+  arco:{esc:'pent', bpm:92, base:62}, menu:{esc:'pent', bpm:72, base:60}};
+const ESPECIAL = {
+  'Getsemaní':{esc:'menor', bpm:58, base:50}, 'La Cruz':{esc:'frigia', bpm:56, base:48}, 'Tumba Vacía':{esc:'mayor', bpm:112, base:62},
+  'Nueva Jerusalén':{esc:'lidia', bpm:100, base:60}, 'Belén':{esc:'pent', bpm:64, base:64}, 'Pentecostés':{esc:'mayor', bpm:116, base:60},
+  'El Desierto':{esc:'frigia', bpm:80, base:52}, 'Mar Rojo':{esc:'dorica', bpm:88, base:55}, 'Goliat':{esc:'dorica', bpm:100, base:50}};
+const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+
+function nota(f, t, d, tipo, vol) {
+  if (!ac || mudo) return;
+  try { const o = ac.createOscillator(), g = ac.createGain();
+    o.type = tipo; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .05); } catch (e) {}
+}
+let ruidoBuf = null;
+function golpe(t, vol, grave) {      // percusión suave: bombo grave o ruido agudo
+  if (!ac || mudo) return;
+  try {
+    if (grave) { const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(45, t + .12);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .14);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + .16); return; }
+    if (!ruidoBuf) { ruidoBuf = ac.createBuffer(1, Math.floor(ac.sampleRate * .1), ac.sampleRate); const dat = ruidoBuf.getChannelData(0); for (let i = 0; i < dat.length; i++) dat[i] = Math.random() * 2 - 1; }
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = ruidoBuf; f.type = 'highpass'; f.frequency.value = 7000;
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + .05);
+    s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t); s.stop(t + .06);
+  } catch (e) {}
+}
+// Compone la pieza de un nivel (o del menú): escala, progresión de acordes y un motivo de 8 notas
+function componer(id) {
+  const L = id === 'menu' ? null : NIVELES[id];
+  const est = L ? (ESPECIAL[L.n] || ESTILOS[L.deco] || ESTILOS.montes) : ESTILOS.menu;
+  let s = L ? id * 7919 + 17 : 5;
+  const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  const esc = ESCALAS[est.esc], n = esc.length, base = est.base + (L ? [0, 2, -1, 3, -3, 5, 1, -2][id % 8] : 0);
+  const deg = d => base + 12 * Math.floor(d / n) + esc[((d % n) + n) % n];
+  const progs = [[0,4,5,3], [0,3,4,0], [0,5,3,4], [0,2,3,4], [0,3,0,4], [0,5,2,4]];
+  const prog = progs[(r() * progs.length) | 0].map(g => g % n);
+  const lo = Math.floor(n * .5), hi = n + 3, motivo = []; let d = Math.floor(n * .8);
+  for (let i = 0; i < 8; i++) { d += [-2, -1, -1, 0, 1, 1, 2][(r() * 7) | 0]; d = Math.max(lo, Math.min(hi, d)); motivo.push(i % 4 === 3 && r() < .35 ? null : d); }
+  return {est, deg, prog, motivo, n};
+}
+// Toca un paso (una corchea): bajo, arpegio suave y melodía; con jefe cerca se añade percusión
+function notasDelPaso(c, p, t, dur, fuerte) {
+  const k = p % 8, bar = ((p / 8) | 0) % 4, pasada = ((p / 32) | 0) % 4, raiz = c.prog[bar], deg = c.deg, n = c.n;
+  if (k === 0) nota(midi(deg(raiz - n)), t, dur * 3.6, 'triangle', .07);
+  if (k === 4) nota(midi(deg(raiz + (n > 5 ? 4 : 2) - n)), t, dur * 3.2, 'triangle', .055);
+  if (k % 2 === 0) nota(midi(deg(raiz + [0, 2, 4, 2][(k / 2) | 0])), t, dur * 1.6, 'sine', .03);
+  const m = c.motivo[k];
+  if (m !== null && !(pasada === 3 && k > 5)) nota(midi(deg(m + [0, 1, 0, -1][bar] + (pasada % 2 ? 2 : 0))), t, dur * 1.7, 'triangle', .055);
+  if (fuerte) { golpe(t, .05, false); if (k % 4 === 0) golpe(t, .12, true); }
+}
+const mus = {id:null, comp:null, paso:0, prox:0};
+function planificarMusica() {
+  if (!ac || mudo) return;
+  if (!(estado === 'jugando' || estado === 'menu' || estado === 'intro' || estado === 'galeria')) { mus.prox = 0; return; }
+  const id = (estado === 'menu' || estado === 'galeria') ? 'menu' : nivel;
+  if (mus.id !== id) { mus.id = id; mus.comp = componer(id); mus.paso = 0; mus.prox = 0; }
+  const jefeCerca = estado === 'jugando' && !!N && N.ene.some(e => e.jefe && e.vivo) && jugadores.some(p => p.x > N.meta - 800);
+  const dur = 60 / (mus.comp.est.bpm * (jefeCerca ? 1.3 : 1)) / 2;
+  if (mus.prox < ac.currentTime - .1) mus.prox = ac.currentTime + .05;
+  while (mus.prox < ac.currentTime + .3) { notasDelPaso(mus.comp, mus.paso++, mus.prox, dur, jefeCerca); mus.prox += dur; }
+}
+setInterval(planificarMusica, 40);
+
+let anterior = performance.now(), acumulado = 0;
+function bucle(ahora) {
+  sondearMandos();
+  acumulado += Math.min(ahora - anterior, 100); anterior = ahora;
+  while (acumulado >= 1000/60) { actualizar(); acumulado -= 1000/60; }
+  dibujar(); requestAnimationFrame(bucle);
+}
+aplicarIdiomaDOM();
+requestAnimationFrame(bucle);
+revalidarLicencia();
+if ("serviceWorker" in navigator && location.protocol !== "file:") { navigator.serviceWorker.register("sw.js").catch(() => {}); }
+</script>
+<div id="codigo" hidden role="dialog" aria-modal="true" aria-labelledby="codigoT">
+  <div class="caja">
+    <h2 id="codigoT">Introduce tu código</h2>
+    <p id="codigoAyuda"></p>
+    <input id="codigoIn" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="100" aria-label="Código de licencia">
+    <p id="codigoMsg" role="status"></p>
+    <div class="fila"><button id="codigoOk" type="button">Activar</button><button id="codigoNo" type="button">Cancelar</button></div>
+  </div>
+</div>
+
+</body>
+</html>
