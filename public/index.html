@@ -307,7 +307,7 @@ function cambiarPj(d) { const k = PERSONAJES.filter(p => p.des <= prog.max).leng
 // ===== MODO DEMO (solo este archivo; el juego completo no lo contiene) =====
 // ===== TIENDA: demo gratuita + juego completo con licencia =====
 // Cambia estas dos líneas con tus datos de Polar (ver LEEME):
-const TIENDA = { compra: "https://sandbox-api.polar.sh/v1/checkout-links/polar_cl_eCcagqEAD2CRki69uFdvtZTS8jLXj9Hnx2RJv2cjH4T/redirect", api: "/api" };
+const TIENDA = { compra: "https://buy.polar.sh/polar_cl_EWHPgPRPbgSNVMWkpS63n7wlkDWIUBtUNK6P72yAzS3", api: "/api" };
 let DEMO = true; const DEMO_NIVELES = 5, CLAVE = "peregrino_tienda";
 let licencia = null;
 try { licencia = JSON.parse(localStorage.getItem("peregrino_licencia") || "null"); } catch (e) {}
