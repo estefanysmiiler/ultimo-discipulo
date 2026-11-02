@@ -22,6 +22,8 @@
   #girar { display:none; margin:0; padding:8px 14px; border-radius:10px; background:var(--boton); color:var(--botontexto); font-size:.95rem; text-align:center; }
   @media (orientation: portrait) and (max-width: 700px) { #girar { display:block; } }
   canvas { width:100%; max-width:1100px; aspect-ratio:16/9; border-radius:12px; touch-action:none; }
+  .legal { margin:0; font-size:.85rem; text-align:center; }
+  .legal a { color:inherit; }
   .ayuda { margin:0; font-size:1rem; text-align:center; max-width:70ch; }
   .controles { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   button { -webkit-user-select:none; font:inherit; font-size:1.3rem; padding:14px 26px; border:0; border-radius:10px;
@@ -31,7 +33,7 @@
   @media (orientation: landscape) and (max-height: 560px) {
     body { box-sizing:border-box; padding:6px; gap:0; min-height:100dvh; justify-content:center; }
     canvas { width:min(100%, calc((100dvh - 12px) * 16 / 9)); }
-    .ayuda { display:none; }
+    .ayuda, .legal { display:none; }
     .controles { display:contents; }
     .controles button { position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 20px); min-width:60px; height:60px; padding:0 12px; font-size:1.05rem; border-radius:14px; opacity:.55; z-index:5; }
     .controles button:active { opacity:.9; }
@@ -61,6 +63,7 @@
 <p id="girar">↻ Gira el teléfono para jugar mejor · Rotate your phone to play</p>
 <canvas id="juego" width="960" height="540" aria-label="Juego El Último Discípulo"></canvas>
 <p class="ayuda">Flechas o A/D para caminar, espacio o ↑ para saltar (mantén para saltar más alto). P pausa, M silencio. Enter continúa. En el menú, ◀ ▶ cambian de personaje; X: habilidad del personaje (honda, arca, trompeta, fuego). Q o el botón Menú vuelven al menú. Dos jugadores: pulsa T en el menú (o toca la franja de arriba). J1 usa flechas, espacio y X; J2 usa A, D, W y S, o los botones J2 que aparecen debajo. En el menú: H activa el modo difícil y G abre la galería de versículos.</p>
+<p class="legal"><a href="/privacidad.html">Privacidad · Privacy</a> · <a href="/condiciones.html">Condiciones · Terms</a> · <a href="mailto:soporte.smiiler.juegos@gmail.com">Soporte</a></p>
 <div class="controles">
   <button id="bIzq" aria-label="Izquierda">◀</button>
   <button id="bSalto" aria-label="Saltar">Saltar</button>
@@ -1208,6 +1211,7 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") { navigator.s
     <p id="codigoAyuda"></p>
     <input id="codigoIn" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="100" aria-label="Código de licencia">
     <p id="codigoMsg" role="status"></p>
+    <p style="font-size:12px;margin:8px 0"><a href="/privacidad.html" target="_blank" rel="noopener">Privacidad</a> · <a href="/condiciones.html" target="_blank" rel="noopener">Condiciones</a></p>
     <div class="fila"><button id="codigoOk" type="button">Activar</button><button id="codigoNo" type="button">Cancelar</button></div>
   </div>
 </div>
