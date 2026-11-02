@@ -160,9 +160,12 @@ function generar(i) {
   const r = rng(i*977 + 13), re = rng(i*911 + 5);       // r: el terreno · re: los enemigos (así el modo difícil no cambia el mapa)
   const G = {suelo:[], plat:[], est:[], ene:[], cart:[], meta:0}; let x = 0, v = 0;
   const dif = Math.min(i, 39) / 39;
+  let bolsa = [];                                     // los tipos de tramo salen en turnos mezclados: así aparecen todos, con frecuencia
+  const sacar = () => { if (!bolsa.length) { bolsa = i < 5 ? [0,1,2] : [0,1,2,3,4];
+    for (let q = bolsa.length-1; q > 0; q--) { const w = r()*(q+1)|0; [bolsa[q], bolsa[w]] = [bolsa[w], bolsa[q]]; } } return bolsa.pop(); };
   for (let k = 0; k < L.segs; k++) {
     const ult = k === L.segs-1, prim = k === 0;
-    const tipo = (prim || ult) ? -1 : (i < 5 ? (r()*3|0) : (r()*5|0));
+    const tipo = (prim || ult) ? -1 : sacar();
     const len = prim ? 900 : ult ? 900 : 860 + (r()*280|0) + (tipo === 4 ? 170 : 0);
     const zonas = [];                                   // tramos de suelo llano y libre donde caben enemigos
     const suelo = (a, b) => G.suelo.push([a,460,b-a,80]);
@@ -199,9 +202,9 @@ function generar(i) {
       estrella(a1+hw/2, 350); estrella(a3+hw/2, 350); estrella(a2+75, 420);
       zonas.push([x+40, a1-30], [a4+30, x+len-40]);
     }
-    const n = k > 0 ? L.dens + (dificil ? 1 : 0) : 0, ok = zonas.filter(z => z[1]-z[0] >= 90).sort((p, q) => (q[1]-q[0]) - (p[1]-p[0]));
-    for (let j = 0; j < n && ok.length; j++) {
-      const vu = re() < L.fly, z = vu ? [x+20, x+len-20] : ok[j % ok.length];
+    const n = k > 0 ? L.dens + (dificil ? 1 : 0) : 0, ok = zonas.filter(z => z[1]-z[0] >= 170).sort((p, q) => (q[1]-q[0]) - (p[1]-p[0]));
+    for (let j = 0; j < (dificil ? n : Math.min(n, ok.length)) && ok.length; j++) {      // normal: como mucho un enemigo por tramo, donde hay sitio para esquivarlo
+      const vu = re() < L.fly, z = ok[j % ok.length];
       G.ene.push({x:z[0]+(z[1]-z[0]-34)*(.2+.6*re()), y:vu?350:432, by:350, w:34, h:28, min:z[0], max:z[1],
         dir:re()<.5?1:-1, vivo:true, vuela:vu, v:dificil ? 1.8 : 1.3});
     }
@@ -239,61 +242,62 @@ const PERSONAJES = [
   {n:'Elías', des:16, tun:'#a8603a', cin:'#ff9a3a', cap:'#5a3a2a', hab:'Fuego del cielo: X quema enemigos cercanos'},
   {n:'María', des:24, tun:'#4a7ac8', cin:'#ffffff', cap:'#e8e0f0', hab:'Fe: una vida extra cada 8 estrellas'}];
 const quien = () => PERSONAJES[Math.min(prog.pj, PERSONAJES.filter(p => p.des <= prog.max).length - 1)];
-// Preguntas bíblicas: después de cada nivel, una pregunta al azar. Formato: [pregunta, [3 opciones], índice de la correcta]
+// Preguntas bíblicas: después de cada nivel, una pregunta al azar. Formato: [pregunta, [3 opciones], índice de la correcta, pasaje donde se encuentra la respuesta]
 const PREGUNTAS = [
-  ['¿Quién construyó el arca?', ['Abraham', 'Noé', 'Moisés'], 1],
-  ['¿A quién venció David con una honda?', ['A Saúl', 'A Sansón', 'A Goliat'], 2],
-  ['¿Qué mar abrió Moisés?', ['El Mar Muerto', 'El Mar Rojo', 'El Mar de Galilea'], 1],
-  ['¿Dónde nació Jesús?', ['Nazaret', 'Jerusalén', 'Belén'], 2],
-  ['¿Cuántos días llovió en el diluvio?', ['100', '40', '7'], 1],
-  ['¿Quién fue tragado por un gran pez?', ['Elías', 'Jonás', 'Daniel'], 1],
-  ['¿Cuál es el primer libro de la Biblia?', ['Éxodo', 'Salmos', 'Génesis'], 2],
-  ['¿Quién guio al pueblo en Jericó?', ['Gedeón', 'David', 'Josué'], 2],
-  ['¿Cuántos discípulos eligió Jesús?', ['7', '12', '10'], 1],
-  ['¿Quién fue echado al foso de los leones?', ['José', 'Pablo', 'Daniel'], 2],
-  ['¿Qué salmo dice: Jehová es mi pastor?', ['Salmo 1', 'Salmo 23', 'Salmo 91'], 1],
-  ['¿Cuántos mandamientos recibió Moisés?', ['12', '5', '10'], 2],
-  ['¿A quién vendieron sus hermanos?', ['A Benjamín', 'A José', 'A Judá'], 1],
-  ['¿Qué tenía el muchacho de Juan 6?', ['7 panes y 3 peces', '12 panes', '5 panes y 2 peces'], 2],
-  ['¿Cuándo resucitó Jesús?', ['Al día cuarenta', 'Al tercer día', 'Al séptimo día'], 1],
-  ['¿Cuál es el último libro de la Biblia?', ['Hechos', 'Apocalipsis', 'Judas'], 1],
-  ['¿Cuántos hijos tuvo Jacob?', ['Siete', 'Doce', 'Diez'], 1],
-  ['¿Quién fue el primer rey de Israel?', ['David', 'Saúl', 'Salomón'], 1],
-  ['¿Qué rey construyó el templo?', ['David', 'Ezequías', 'Salomón'], 2],
-  ['¿Quién interpretó los sueños del faraón?', ['Daniel', 'José', 'Moisés'], 1],
-  ['¿De qué animales era pastor David?', ['De cabras', 'De bueyes', 'De ovejas'], 2],
-  ['¿Cómo se llamaba la esposa de Abraham?', ['Rebeca', 'Sara', 'Raquel'], 1],
-  ['¿Quién traicionó a Jesús?', ['Pedro', 'Judas Iscariote', 'Tomás'], 1],
-  ['¿Quién negó a Jesús tres veces?', ['Juan', 'Andrés', 'Pedro'], 2],
-  ['¿Qué apóstol dudó de la resurrección?', ['Mateo', 'Tomás', 'Felipe'], 1],
-  ['¿En qué lugar fue bautizado Jesús?', ['En el Nilo', 'En el mar Rojo', 'En el río Jordán'], 2],
-  ['¿Cuál fue el primer milagro de Jesús?', ['Caminar sobre el agua', 'Agua en vino', 'Sanar a un ciego'], 1],
-  ['¿Quién escribió muchos salmos?', ['Pablo', 'Moisés', 'David'], 2],
-  ['¿Cuántos libros tiene la Biblia?', ['66', '39', '73'], 0],
-  ['¿Quién era el hombre más fuerte?', ['Goliat', 'Gedeón', 'Sansón'], 2],
-  ['¿Qué ave llevó una rama a Noé?', ['Un águila', 'Una paloma', 'Un cuervo'], 1],
-  ['¿Cuántos días estuvo Jonás en el pez?', ['Siete', 'Cuarenta', 'Tres'], 2],
-  ['¿En qué monte recibió Moisés la ley?', ['Carmelo', 'Sinaí', 'Sion'], 1],
-  ['¿Quién fue la madre de Samuel?', ['Sara', 'Ester', 'Ana'], 2],
-  ['¿Qué reina salvó a su pueblo en Persia?', ['Rut', 'Ester', 'Débora'], 1],
-  ['¿Cómo se llamaba la suegra de Rut?', ['Ana', 'Elisabet', 'Noemí'], 2],
-  ['¿A qué ciudad fue enviado Jonás?', ['Babilonia', 'Nínive', 'Tiro'], 1],
-  ['¿Quién fue el apóstol de los gentiles?', ['Pedro', 'Santiago', 'Pablo'], 2],
-  ['¿Qué llenó a los discípulos en Pentecostés?', ['Pan del cielo', 'El Espíritu Santo', 'Una estrella'], 1],
-  ['¿Cuántos libros tiene el Nuevo Testamento?', ['39', '27', '30'], 1],
-  ['¿Qué hizo Dios en el séptimo día?', ['Creó al hombre', 'Envió el diluvio', 'Descansó'], 2]];
+  ['¿Quién construyó el arca?', ['Abraham', 'Noé', 'Moisés'], 1, 'Génesis 6:14'],
+  ['¿A quién venció David con una honda?', ['A Saúl', 'A Sansón', 'A Goliat'], 2, '1 Samuel 17:50'],
+  ['¿Qué mar abrió Moisés?', ['El Mar Muerto', 'El Mar Rojo', 'El Mar de Galilea'], 1, 'Éxodo 14:21'],
+  ['¿Dónde nació Jesús?', ['Nazaret', 'Jerusalén', 'Belén'], 2, 'Mateo 2:1'],
+  ['¿Cuántos días llovió en el diluvio?', ['100', '40', '7'], 1, 'Génesis 7:12'],
+  ['¿Quién fue tragado por un gran pez?', ['Elías', 'Jonás', 'Daniel'], 1, 'Jonás 1:17'],
+  ['¿Cuál es el primer libro de la Biblia?', ['Éxodo', 'Salmos', 'Génesis'], 2, 'Génesis 1:1'],
+  ['¿Quién guio al pueblo en Jericó?', ['Gedeón', 'David', 'Josué'], 2, 'Josué 6:20'],
+  ['¿Cuántos discípulos eligió Jesús?', ['7', '12', '10'], 1, 'Lucas 6:13'],
+  ['¿Quién fue echado al foso de los leones?', ['José', 'Pablo', 'Daniel'], 2, 'Daniel 6:16'],
+  ['¿Qué salmo dice: Jehová es mi pastor?', ['Salmo 1', 'Salmo 23', 'Salmo 91'], 1, 'Salmos 23:1'],
+  ['¿Cuántos mandamientos recibió Moisés?', ['12', '5', '10'], 2, 'Éxodo 34:28'],
+  ['¿A quién vendieron sus hermanos?', ['A Benjamín', 'A José', 'A Judá'], 1, 'Génesis 37:28'],
+  ['¿Qué tenía el muchacho de Juan 6?', ['7 panes y 3 peces', '12 panes', '5 panes y 2 peces'], 2, 'Juan 6:9'],
+  ['¿Cuándo resucitó Jesús?', ['Al día cuarenta', 'Al tercer día', 'Al séptimo día'], 1, '1 Corintios 15:4'],
+  ['¿Cuál es el último libro de la Biblia?', ['Hechos', 'Apocalipsis', 'Judas'], 1, 'Apocalipsis 22:21'],
+  ['¿Cuántos hijos tuvo Jacob?', ['Siete', 'Doce', 'Diez'], 1, 'Génesis 35:22'],
+  ['¿Quién fue el primer rey de Israel?', ['David', 'Saúl', 'Salomón'], 1, '1 Samuel 10:1'],
+  ['¿Qué rey construyó el templo?', ['David', 'Ezequías', 'Salomón'], 2, '1 Reyes 6:1'],
+  ['¿Quién interpretó los sueños del faraón?', ['Daniel', 'José', 'Moisés'], 1, 'Génesis 41:25'],
+  ['¿De qué animales era pastor David?', ['De cabras', 'De bueyes', 'De ovejas'], 2, '1 Samuel 16:11'],
+  ['¿Cómo se llamaba la esposa de Abraham?', ['Rebeca', 'Sara', 'Raquel'], 1, 'Génesis 17:15'],
+  ['¿Quién traicionó a Jesús?', ['Pedro', 'Judas Iscariote', 'Tomás'], 1, 'Mateo 26:15'],
+  ['¿Quién negó a Jesús tres veces?', ['Juan', 'Andrés', 'Pedro'], 2, 'Mateo 26:75'],
+  ['¿Qué apóstol dudó de la resurrección?', ['Mateo', 'Tomás', 'Felipe'], 1, 'Juan 20:25'],
+  ['¿En qué lugar fue bautizado Jesús?', ['En el Nilo', 'En el mar Rojo', 'En el río Jordán'], 2, 'Mateo 3:13'],
+  ['¿Cuál fue el primer milagro de Jesús?', ['Caminar sobre el agua', 'Agua en vino', 'Sanar a un ciego'], 1, 'Juan 2:11'],
+  ['¿Quién escribió muchos salmos?', ['Pablo', 'Moisés', 'David'], 2, '2 Samuel 23:1'],
+  ['¿Cuántos libros tiene la Biblia?', ['66', '39', '73'], 0, ''],
+  ['¿Quién era el hombre más fuerte?', ['Goliat', 'Gedeón', 'Sansón'], 2, 'Jueces 16:30'],
+  ['¿Qué ave llevó una rama a Noé?', ['Un águila', 'Una paloma', 'Un cuervo'], 1, 'Génesis 8:11'],
+  ['¿Cuántos días estuvo Jonás en el pez?', ['Siete', 'Cuarenta', 'Tres'], 2, 'Jonás 1:17'],
+  ['¿En qué monte recibió Moisés la ley?', ['Carmelo', 'Sinaí', 'Sion'], 1, 'Éxodo 19:20'],
+  ['¿Quién fue la madre de Samuel?', ['Sara', 'Ester', 'Ana'], 2, '1 Samuel 1:20'],
+  ['¿Qué reina salvó a su pueblo en Persia?', ['Rut', 'Ester', 'Débora'], 1, 'Ester 7:3'],
+  ['¿Cómo se llamaba la suegra de Rut?', ['Ana', 'Elisabet', 'Noemí'], 2, 'Rut 1:2'],
+  ['¿A qué ciudad fue enviado Jonás?', ['Babilonia', 'Nínive', 'Tiro'], 1, 'Jonás 1:2'],
+  ['¿Quién fue el apóstol de los gentiles?', ['Pedro', 'Santiago', 'Pablo'], 2, 'Romanos 11:13'],
+  ['¿Qué llenó a los discípulos en Pentecostés?', ['Pan del cielo', 'El Espíritu Santo', 'Una estrella'], 1, 'Hechos 2:4'],
+  ['¿Cuántos libros tiene el Nuevo Testamento?', ['39', '27', '30'], 1, ''],
+  ['¿Qué hizo Dios en el séptimo día?', ['Creó al hombre', 'Envió el diluvio', 'Descansó'], 2, 'Génesis 2:2']];
 // Saca las preguntas en orden aleatorio y no repite ninguna hasta haberlas usado todas
 let pregBolsa = [];
 function sigPreg() {
   if (!pregBolsa.length) pregBolsa = PREGUNTAS.map((_, i) => i).sort(() => Math.random() - .5);
   const q = PREGUNTAS[pregBolsa.pop()];
   const op = q[1].map((t, i) => [t, i === q[2], Math.random()]).sort((a, b) => a[2] - b[2]);   // mezcla las opciones
-  return [q[0], op.map(o => o[0]), op.findIndex(o => o[1])];
+  return [q[0], op.map(o => o[0]), op.findIndex(o => o[1]), q[3]];
 }
 function responder(k) {
   const ok = k === preg[2];
   if (ok) { puntos += 100; mejorar(); guardar(); }
   msgPreg = ok ? '¡Correcto! +100 estrellas' : 'La respuesta era: ' + preg[1][preg[2]];
+  refPreg = 'Léelo en ' + (preg[3] || 'el índice de tu Biblia');
   estado = 'nivelok'; melodia(ok ? [784, 988, 1175] : [330, 262]);
 }
 function cambiarPag(d) { const n = Math.ceil(NIVELES.length / 18); pagMenu = ((pagMenu + d) % n + n) % n; tono(500, .08, 'triangle', .05); }
@@ -403,7 +407,7 @@ let idioma = prog.idioma === "en" ? "en" : "es";
 const EN = {"El Señor sostiene a todos los abatidos y levanta a todos los que están doblados.": "Yahweh upholds all who fall, and raises up all those who are bowed down.", "Edén": "Eden", "El Diluvio": "The Flood", "Babel": "Babel", "La Promesa": "The Promise", "Betel": "Bethel", "José en Egipto": "Joseph in Egypt", "Mar Rojo": "Red Sea", "El Desierto": "The Desert", "El Sinaí": "Sinai", "Jericó": "Jericho", "Gedeón": "Gideon", "Rut": "Ruth", "Goliat": "Goliath", "Los Salmos": "The Psalms", "El Templo": "The Temple", "Elías": "Elijah", "Nehemías": "Nehemiah", "Babilonia": "Babylon", "Ester": "Esther", "Ezequiel": "Ezekiel", "El Gran Pez": "The Great Fish", "Belén": "Bethlehem", "Bautismo": "Baptism", "La Tentación": "The Temptation", "Galilea": "Galilee", "El Monte": "The Mount", "Panes y Peces": "Loaves and Fishes", "Transfiguración": "Transfiguration", "Betania": "Bethany", "Jerusalén": "Jerusalem", "Getsemaní": "Gethsemane", "La Cruz": "The Cross", "Tumba Vacía": "The Empty Tomb", "Emaús": "Emmaus", "Pentecostés": "Pentecost", "Filipos": "Philippi", "Damasco": "Damascus", "Éfeso": "Ephesus", "Patmos": "Patmos", "Nueva Jerusalén": "New Jerusalem", "La Serpiente": "The Serpent", "El Abismo": "The Abyss", "El Orgullo": "Pride", "La Duda": "Doubt", "El Temor": "Fear", "Columna de luz: nunca pierde vidas": "Column of light: never loses lives", "El Último Discípulo": "The Last Disciple", "Camina hacia la luz": "Walks toward the light", "David": "David", "Honda: pulsa X para lanzar piedras": "Sling: press X to throw stones", "Noé": "Noah", "Arca: pulsa X para un escudo de 3 s": "Ark: press X for a 3 s shield", "Moisés": "Moses", "Vara: doble salto en el aire": "Staff: double jump in the air", "Gracia: las estrellas valen el doble": "Grace: stars are worth double", "Sansón": "Samson", "Fuerza: vence al tocar, 4 vidas": "Strength: defeats by touch, 4 lives", "Jonás": "Jonah", "Planea: mantén saltar al caer": "Glide: hold jump while falling", "Trompeta: pulsa X para aturdir enemigos 2 s": "Trumpet: press X to stun enemies for 2 s", "Daniel": "Daniel", "Valiente: empieza con 5 vidas": "Brave: starts with 5 lives", "Pablo": "Paul", "Misionero: corre un 25% más rápido": "Missionary: runs 25% faster", "Fuego del cielo: X quema enemigos cercanos": "Fire from heaven: X burns nearby enemies", "María": "Mary", "Fe: una vida extra cada 8 estrellas": "Faith: an extra life every 8 stars", "Abraham": "Abraham", "A Saúl": "Saul", "A Sansón": "Samson", "A Goliat": "Goliath", "El Mar Muerto": "The Dead Sea", "El Mar Rojo": "The Red Sea", "El Mar de Galilea": "The Sea of Galilee", "Nazaret": "Nazareth", "Éxodo": "Exodus", "Salmos": "Psalms", "Génesis": "Genesis", "Josué": "Joshua", "José": "Joseph", "Salmo 1": "Psalm 1", "Salmo 23": "Psalm 23", "Salmo 91": "Psalm 91", "A Benjamín": "Benjamin", "A José": "Joseph", "A Judá": "Judah", "7 panes y 3 peces": "7 loaves and 3 fish", "12 panes": "12 loaves", "5 panes y 2 peces": "5 loaves and 2 fish", "Al día cuarenta": "On the fortieth day", "Al tercer día": "On the third day", "Al séptimo día": "On the seventh day", "Hechos": "Acts", "Apocalipsis": "Revelation", "Judas": "Jude", "Siete": "Seven", "Doce": "Twelve", "Diez": "Ten", "Saúl": "Saul", "Salomón": "Solomon", "Ezequías": "Hezekiah", "De cabras": "Goats", "De bueyes": "Oxen", "De ovejas": "Sheep", "Rebeca": "Rebekah", "Sara": "Sarah", "Raquel": "Rachel", "Pedro": "Peter", "Judas Iscariote": "Judas Iscariot", "Tomás": "Thomas", "Juan": "John", "Andrés": "Andrew", "Mateo": "Matthew", "Felipe": "Philip", "En el Nilo": "In the Nile", "En el mar Rojo": "In the Red Sea", "En el río Jordán": "In the Jordan River", "Caminar sobre el agua": "Walking on water", "Agua en vino": "Water into wine", "Sanar a un ciego": "Healing a blind man", "Santiago": "James", "Un águila": "An eagle", "Una paloma": "A dove", "Un cuervo": "A raven", "Cuarenta": "Forty", "Tres": "Three", "Carmelo": "Carmel", "Sinaí": "Sinai", "Sion": "Zion", "Ana": "Hannah", "Débora": "Deborah", "Nínive": "Nineveh", "Tiro": "Tyre", "Pan del cielo": "Bread from heaven", "El Espíritu Santo": "The Holy Spirit", "Una estrella": "A star", "Creó al hombre": "Created man", "Envió el diluvio": "Sent the flood", "Descansó": "Rested", "Elisabet": "Elizabeth", "Noemí": "Naomi", "¿Quién construyó el arca?": "Who built the ark?", "¿A quién venció David con una honda?": "Whom did David defeat with a sling?", "¿Qué mar abrió Moisés?": "Which sea did Moses part?", "¿Dónde nació Jesús?": "Where was Jesus born?", "¿Cuántos días llovió en el diluvio?": "How many days did it rain in the flood?", "¿Quién fue tragado por un gran pez?": "Who was swallowed by a great fish?", "¿Cuál es el primer libro de la Biblia?": "What is the first book of the Bible?", "¿Quién guio al pueblo en Jericó?": "Who led the people at Jericho?", "¿Cuántos discípulos eligió Jesús?": "How many disciples did Jesus choose?", "¿Quién fue echado al foso de los leones?": "Who was thrown into the lions' den?", "¿Qué salmo dice: Jehová es mi pastor?": "Which psalm says: Yahweh is my shepherd?", "¿Cuántos mandamientos recibió Moisés?": "How many commandments did Moses receive?", "¿A quién vendieron sus hermanos?": "Whom did his brothers sell?", "¿Qué tenía el muchacho de Juan 6?": "What did the boy in John 6 have?", "¿Cuándo resucitó Jesús?": "When did Jesus rise again?", "¿Cuál es el último libro de la Biblia?": "What is the last book of the Bible?", "¿Cuántos hijos tuvo Jacob?": "How many sons did Jacob have?", "¿Quién fue el primer rey de Israel?": "Who was the first king of Israel?", "¿Qué rey construyó el templo?": "Which king built the temple?", "¿Quién interpretó los sueños del faraón?": "Who interpreted Pharaoh's dreams?", "¿De qué animales era pastor David?": "What animals did David shepherd?", "¿Cómo se llamaba la esposa de Abraham?": "What was the name of Abraham's wife?", "¿Quién traicionó a Jesús?": "Who betrayed Jesus?", "¿Quién negó a Jesús tres veces?": "Who denied Jesus three times?", "¿Qué apóstol dudó de la resurrección?": "Which apostle doubted the resurrection?", "¿En qué lugar fue bautizado Jesús?": "Where was Jesus baptized?", "¿Cuál fue el primer milagro de Jesús?": "What was Jesus' first miracle?", "¿Quién escribió muchos salmos?": "Who wrote many psalms?", "¿Cuántos libros tiene la Biblia?": "How many books does the Bible have?", "¿Quién era el hombre más fuerte?": "Who was the strongest man?", "¿Qué ave llevó una rama a Noé?": "Which bird brought a branch to Noah?", "¿Cuántos días estuvo Jonás en el pez?": "How many days was Jonah in the fish?", "¿En qué monte recibió Moisés la ley?": "On which mountain did Moses receive the law?", "¿Quién fue la madre de Samuel?": "Who was Samuel's mother?", "¿Qué reina salvó a su pueblo en Persia?": "Which queen saved her people in Persia?", "¿Cómo se llamaba la suegra de Rut?": "What was the name of Ruth's mother-in-law?", "¿A qué ciudad fue enviado Jonás?": "To which city was Jonah sent?", "¿Quién fue el apóstol de los gentiles?": "Who was the apostle to the Gentiles?", "¿Qué llenó a los discípulos en Pentecostés?": "What filled the disciples at Pentecost?", "¿Cuántos libros tiene el Nuevo Testamento?": "How many books does the New Testament have?", "¿Qué hizo Dios en el séptimo día?": "What did God do on the seventh day?", "Un viaje de cuarenta etapas por la Biblia": "A forty-stage journey through the Bible", "Galería de versículos": "Verse Gallery", "◀ Volver": "◀ Back", "Versículos de premio (al vencer enemigos)": "Reward verses (for defeating enemies)", "sin descubrir": "undiscovered", "★ Nuevo en tu galería": "★ New in your gallery", "Pausa": "Paused", "Pulsa P o toca la pantalla para seguir": "Press P or tap the screen to continue", "Pregunta bíblica": "Bible question", "Pulsa 1, 2 o 3, o toca la respuesta": "Press 1, 2 or 3, or tap the answer", "Difícil": "Hard", "¡Nivel completado!": "Level complete!", "¡Llegaste a la Nueva Jerusalén!": "You reached the New Jerusalem!", "Fin del camino": "End of the road", "Enter o toca para el siguiente nivel": "Press Enter or tap for the next level", "Enter o toca para volver al menú": "Press Enter or tap to return to the menu", "Enter o toca para reintentar el nivel": "Press Enter or tap to retry the level", "¡Correcto! +100 estrellas": "Correct! +100 stars", "¡Corazón de gozo!": "Heart of joy!", "+1 vida": "+1 life", "Armadura de Dios (Efesios 6:11)": "Armor of God (Ephesians 6:11)", "Invencible 8 segundos: toca a los enemigos para vencerlos": "Invincible for 8 seconds: touch enemies to defeat them", "Textos bíblicos: Reina-Valera 1909, ortografía actualizada (dominio público)": "Bible text: World English Bible (public domain)", "Textos: Reina-Valera 1909, ortografía actualizada (dominio público). Música y gráficos originales.": "Text: World English Bible (public domain). Original music and graphics.", "“Bien hecho, buen siervo. Como fuiste fiel en lo poco…”  Lucas 19:17": "“Well done, you good servant!”  Luke 19:17", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21": "“Well done, good and faithful servant.”  Matthew 25:21", "“Después de mi caída seré levantado.”  Miqueas 7:8": "“When I fall, I will arise.”  Micah 7:8", "En el principio creó Dios los cielos y la tierra.": "In the beginning, God created the heavens and the earth.", "Y creó Dios al hombre a su imagen, a imagen de Dios lo creó.": "God created man in his own image. In God’s image he created him; male and female he created them.", "Era bueno en gran manera.": "God saw everything that he had made, and, behold, it was very good. There was evening and there was morning, a sixth day.", "Pero Noé halló gracia en los ojos de Jehová.": "But Noah found favor in Yahweh’s eyes.", "Entra tú y toda tu casa en el arca.": "Come with all of your household into the ship, for I have seen your righteousness before me in this generation.", "Mi arco pondré en las nubes, el cual será por señal de convenio entre mí y la tierra.": "I set my rainbow in the cloud, and it will be a sign of a covenant between me and the earth.", "Edifiquémonos una ciudad y una torre, cuya cúspide llegue al cielo.": "Let’s build ourselves a city, and a tower whose top reaches to the sky, and let’s make a name for ourselves.", "Antes del quebrantamiento es la soberbia.": "Pride goes before destruction, and an arrogant spirit before a fall.", "Si Jehová no edificare la casa, en vano trabajan los que la edifican.": "Unless Yahweh watches over the city, the watchman guards it in vain.", "Mira ahora a los cielos, y cuenta las estrellas, si las puedes contar.": "Yahweh brought him outside, and said, “Look now toward the sky, and count the stars, if you are able to count them.”", "Y haré de ti una nación grande, y bendecirte he, y engrandeceré tu nombre, y serás bendición.": "I will make of you a great nation. I will bless you and make your name great. You will be a blessing.", "En el monte de Jehová será provisto.": "As it is said to this day, “On Yahweh’s mountain, it will be provided.”", "Y soñó, y he aquí una escala que estaba apoyada en tierra, y su cabeza tocaba en el cielo.": "He dreamed and saw a stairway set upon the earth, and its top reached to heaven.", "Y he aquí, yo soy contigo, y te guardaré por donde quiera que fueres, y te volveré a esta tierra.": "Behold, I am with you, and will keep you, wherever you go, and will bring you again into this land.", "Ciertamente Jehová está en este lugar.": "Jacob awakened out of his sleep, and he said, “Surely Yahweh is in this place, and I didn’t know it.”", "Fíate de Jehová de todo tu corazón.": "Trust in Yahweh with all your heart, and don’t lean on your own understanding.", "Jehová es mi luz y mi salvación; ¿de quién temeré?": "Yahweh is my light and my salvation. Whom shall I fear? Yahweh is the strength of my life. Of whom shall I be afraid?", "La palabra del Dios nuestro permanece para siempre.": "The grass withers, the flower fades; but the word of our God stands forever.", "Y sabemos que a los que a Dios aman, todas las cosas les ayudan a bien, es a saber, a los que conforme al propósito son llamados.": "We know that all things work together for good for those who love God, for those who are called according to his purpose.", "Vosotros sois la luz del mundo.": "You are the light of the world. A city located on a hill can’t be hidden.", "Porque no nos ha dado Dios el espíritu de temor, sino el de fortaleza, y de amor, y de templanza.": "For God didn’t give us a spirit of fear, but of power, love, and self-control.", "Gustad, y ved que es bueno Jehová.": "Oh taste and see that Yahweh is good. Blessed is the man who takes refuge in him.", "Venid a mí todos los que estáis trabajados y cargados, que yo os haré descansar.": "Come to me, all you who labor and are heavily burdened, and I will give you rest.", "Nosotros le amamos a él, porque él nos amó primero.": "We love him, because he first loved us.", "Torre fuerte es el nombre de Jehová.": "Yahweh’s name is a strong tower: the righteous run to him, and are safe.", "Pues que a sus ángeles mandará acerca de ti, que te guarden en todos tus caminos.": "For he will put his angels in charge of you, to guard you in all your ways.", "Pensamientos de paz, y no de mal.": "Says Yahweh, “thoughts of peace, and not of evil, to give you hope and a future.”", "El bien y la misericordia me seguirán todos los días de mi vida.": "Surely goodness and loving kindness shall follow me all the days of my life, and I will dwell in Yahweh’s house forever.", "Que yo y mi casa serviremos a Jehová.": "But as for me and my house, we will serve Yahweh.", "Tú le guardarás en completa paz, cuyo pensamiento en ti persevera.": "You will keep whoever’s mind is steadfast in perfect peace, because he trusts in you.", "Solamente hacer juicio, y amar misericordia, y humillarte para andar con tu Dios.": "What does Yahweh require of you, but to act justly, to love mercy, and to walk humbly with your God?", "Nuevas son cada mañana; grande es tu fidelidad.": "They are new every morning. Great is your faithfulness.", "Entrad por sus puertas con reconocimiento, por sus atrios con alabanza.": "Enter into his gates with thanksgiving, and into his courts with praise. Give thanks to him, and bless his name.", "Para todas las cosas hay sazón, y todo lo que se quiere debajo del cielo, tiene su tiempo.": "For everything there is a season, and a time for every purpose under heaven.", "Es pues la fe la sustancia de las cosas que se esperan, la demostración de las cosas que no se ven.": "Now faith is assurance of things hoped for, proof of things not seen.", "Y si alguno de vosotros tiene falta de sabiduría, demándela a Dios, el cual da a todos abundantemente, y no zahiere.": "But if any of you lacks wisdom, let him ask of God, who gives to all liberally and without reproach.", "Velad, estad firmes en la fe.": "Watch! Stand firm in the faith! Be courageous! Be strong!", "No nos cansemos, pues, de hacer bien.": "Let’s not be weary in doing good, for we will reap in due season if we don’t give up.", "Porque por gracia sois salvos por la fe; y esto no de vosotros, pues es don de Dios.": "For by grace you have been saved through faith, and that not of yourselves; it is the gift of God.", "Yo estoy con vosotros todos los días.": "“Teaching them to observe all things that I commanded you. Behold, I am with you always, even to the end of the age.” Amen.", "Confiad, yo he vencido al mundo.": "I have told you these things, that in me you may have peace. In the world you have trouble; but cheer up!", "Este es el día que hizo Jehová; nos gozaremos y alegraremos en él.": "This is the day that Yahweh has made. We will rejoice and be glad in it!", "Estad siempre gozosos.": "Always rejoice."};
 Object.assign(EN, {"¡Has terminado la demo!": "You finished the demo!", "Juego completo: 40 niveles, 40 jefes y 12 personajes · 2,99 €": "Full game: 40 levels, 40 bosses and 12 characters · €2.99", "DEMO GRATUITA · 5 niveles · Juego completo 2,99 €": "FREE DEMO · 5 levels · Full game €2.99"});
 if (licencia && licencia.datos && licencia.datos.en) Object.assign(EN, licencia.datos.en);
-const LIBROS_EN = {"Génesis": "Genesis", "Éxodo": "Exodus", "Deuteronomio": "Deuteronomy", "Josué": "Joshua", "Jueces": "Judges", "Rut": "Ruth", "1 Samuel": "1 Samuel", "1 Reyes": "1 Kings", "Nehemías": "Nehemiah", "Ester": "Esther", "Salmos": "Psalms", "Salmo": "Psalm", "Proverbios": "Proverbs", "Eclesiastés": "Ecclesiastes", "Isaías": "Isaiah", "Jeremías": "Jeremiah", "Lamentaciones": "Lamentations", "Ezequiel": "Ezekiel", "Daniel": "Daniel", "Jonás": "Jonah", "Miqueas": "Micah", "Zacarías": "Zechariah", "Mateo": "Matthew", "Marcos": "Mark", "Lucas": "Luke", "Juan": "John", "Hechos": "Acts", "Romanos": "Romans", "1 Corintios": "1 Corinthians", "2 Corintios": "2 Corinthians", "Gálatas": "Galatians", "Efesios": "Ephesians", "Filipenses": "Philippians", "1 Tesalonicenses": "1 Thessalonians", "2 Timoteo": "2 Timothy", "Hebreos": "Hebrews", "Santiago": "James", "1 Juan": "1 John", "Apocalipsis": "Revelation"};
+const LIBROS_EN = {"Génesis": "Genesis", "Éxodo": "Exodus", "Deuteronomio": "Deuteronomy", "Josué": "Joshua", "Jueces": "Judges", "Rut": "Ruth", "1 Samuel": "1 Samuel", "1 Reyes": "1 Kings", "Nehemías": "Nehemiah", "Ester": "Esther", "2 Samuel": "2 Samuel", "Salmos": "Psalms", "Salmo": "Psalm", "Proverbios": "Proverbs", "Eclesiastés": "Ecclesiastes", "Isaías": "Isaiah", "Jeremías": "Jeremiah", "Lamentaciones": "Lamentations", "Ezequiel": "Ezekiel", "Daniel": "Daniel", "Jonás": "Jonah", "Miqueas": "Micah", "Zacarías": "Zechariah", "Mateo": "Matthew", "Marcos": "Mark", "Lucas": "Luke", "Juan": "John", "Hechos": "Acts", "Romanos": "Romans", "1 Corintios": "1 Corinthians", "2 Corintios": "2 Corinthians", "Gálatas": "Galatians", "Efesios": "Ephesians", "Filipenses": "Philippians", "1 Tesalonicenses": "1 Thessalonians", "2 Timoteo": "2 Timothy", "Hebreos": "Hebrews", "Santiago": "James", "1 Juan": "1 John", "Apocalipsis": "Revelation"};
 const PATRONES = [
   [/^Dificultad: (Difícil|Normal) \(H\)$/, (m, a) => "Difficulty: " + tr(a) + " (H)"],
   [/^Modo: (2 jugadores|1 jugador) \(T\)$/, (m, a) => "Mode: " + a.replace("jugadores", "players").replace("jugador", "player") + " (T)"],
@@ -427,6 +431,7 @@ const PATRONES = [
   [/^Personajes (\d+)\/(\d+) · ◀ ▶ para cambiar · Enter o toca un nivel para empezar$/, (m, a, b) => "Characters " + a + "/" + b + " · ◀ ▶ to change · Press Enter or tap a level to start"],
   [/^Página (\d+)\/(\d+) \(▲▼ o toca aquí\)  ·  Mejor: (\d+)  ·  M silencio  P pausa$/, (m, a, b, c) => "Page " + a + "/" + b + " (▲▼ or tap here)  ·  Best: " + c + "  ·  M mute  P pause"],
   [/^La respuesta era: (.+)$/, (m, a) => "The answer was: " + tr(a)],
+  [/^Léelo en (.+)$/, (m, a) => a === "el índice de tu Biblia" ? "Find it in your Bible's table of contents" : "Find it in " + tr(a)],
 ];
 function tr(s) {
   if (idioma !== "en" || typeof s !== "string") return s;
@@ -495,7 +500,7 @@ function iniciar(i, reset) {
   estrellas = N.est.map(m => ({x:m[0], y:m[1], cogida:false})); particulas = []; piedras = []; balas = []; nuevoPj = null; versiculo = null; tVers = 0; versNuevo = false; descubrir(NIVELES[i].vers[0][1]);
   reaparecer(); estado = "intro"; tIntro = 200;
 }
-let estrellas = [], piedras = [], nuevoPj = null, pagMenu = 0, menuVisto = false, preg = null, msgPreg = "";
+let estrellas = [], piedras = [], nuevoPj = null, pagMenu = 0, menuVisto = false, preg = null, msgPreg = "", refPreg = "";
 let modo2 = false, jugadores = [];
 let dificil = false, balas = [], pagGal = 0, versNuevo = false;
 const crearPj = (x, P, k) => ({x, y:380, w:30, h:44, vx:0, vy:0, enSuelo:false, mira:1, coyote:0, buf:0, inv:60, prevSalto:false, escudo:0, honda:0, doble:false, P, k});
@@ -770,7 +775,7 @@ function actualizar() {
   // El nivel termina cuando todos los jugadores cruzan la meta
   if (estado === "jugando" && jugadores.every(p => p.x > N.meta)) {
     estado = (nivel >= LIMITE()) ? "fin" : "pregunta";
-    if (estado === "pregunta") { preg = sigPreg(); msgPreg = ""; }
+    if (estado === "pregunta") { preg = sigPreg(); msgPreg = ""; refPreg = ""; }
     if (dificil) { puntos += 150; if (!prog.dif.includes(nivel)) prog.dif.push(nivel); }
     if (DEMO && nivel >= LIMITE()) prog.demoFin = true;
     const antes = prog.max; prog.max = Math.max(prog.max, Math.min(nivel + 1, LIMITE())); nuevoPj = PERSONAJES.find(p => p.des > antes && p.des <= prog.max); mejorar(); guardar();
@@ -1000,16 +1005,18 @@ function dibujar() {
     ctx.fillStyle = "rgba(43,33,64,.85)"; ctx.fillRect(0,0,ANCHO,ALTO);
     const t = estado === "nivelok" ? ["¡Nivel completado!", "“Bien hecho, buen siervo. Como fuiste fiel en lo poco…”  Lucas 19:17"]
       : estado === "fin" ? (DEMO ? ["¡Has terminado la demo!", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21"] : ["¡Llegaste a la Nueva Jerusalén!", "“Bien hecho, siervo bueno y fiel.”  Mateo 25:21"]) : ["Fin del camino", "“Después de mi caída seré levantado.”  Miqueas 7:8"];
+    const dy = estado === "nivelok" && refPreg ? 30 : 0;       // hace sitio a la línea del pasaje bíblico
     texto(t[0], ANCHO/2, 200, 48, "#fff4dc", "center", "bold"); texto(t[1], ANCHO/2, 252, 24, "#fff4dc", "center", "italic");
-    if (estado === "nivelok" && msgPreg) texto(msgPreg, ANCHO/2, 282, 20, "#fff4dc", "center", "bold");
-    texto("★ " + puntos + "   Mejor: " + mejor() + (dificil ? "  (modo difícil)" : ""), ANCHO/2, 305, 24, "#ffc400", "center", "bold");
+    if (estado === "nivelok" && msgPreg) texto(msgPreg, ANCHO/2, 280, 20, "#fff4dc", "center", "bold");
+    if (dy) texto(refPreg, ANCHO/2, 303, 19, "#ffc400", "center", "italic");
+    texto("★ " + puntos + "   Mejor: " + mejor() + (dificil ? "  (modo difícil)" : ""), ANCHO/2, 305 + dy, 24, "#ffc400", "center", "bold");
     if (DEMO && estado === "fin") {
       texto("Juego completo: 40 niveles, 40 jefes y 12 personajes · 2,99 €", ANCHO/2, 331, 18, "#ffc400", "center", "bold");
       ctx.fillStyle = "rgba(255,196,0,.95)"; ctx.fillRect(230, 384, 240, 44); texto("Comprar · 2,99 € (B)", 350, 413, 18, "#2b2140", "center", "bold");
       ctx.fillStyle = "rgba(255,244,220,.22)"; ctx.fillRect(490, 384, 240, 44); texto("Tengo un código (K)", 610, 413, 18, "#fff4dc", "center", "bold");
     }
-    if (estado === "nivelok" && nuevoPj) texto("¡Nuevo personaje: " + nuevoPj.n + "!", ANCHO/2, 337, 22, "#ffc400", "center", "bold");
-    texto(estado === "nivelok" ? "Enter o toca para el siguiente nivel" : estado === "fin" ? "Enter o toca para volver al menú" : "Enter o toca para reintentar el nivel", ANCHO/2, 355, 20, "#fff4dc");
+    if (estado === "nivelok" && nuevoPj) texto("¡Nuevo personaje: " + nuevoPj.n + "!", ANCHO/2, 337 + dy, 22, "#ffc400", "center", "bold");
+    texto(estado === "nivelok" ? "Enter o toca para el siguiente nivel" : estado === "fin" ? "Enter o toca para volver al menú" : "Enter o toca para reintentar el nivel", ANCHO/2, 355 + dy + (dy ? 6 : 0), 20, "#fff4dc");
     texto("Textos: Reina-Valera 1909, ortografía actualizada (dominio público). Música y gráficos originales.", ANCHO/2, 505, 13, "#d9cfb8", "center", "italic");
   }
 }
