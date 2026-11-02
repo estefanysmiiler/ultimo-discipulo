@@ -347,7 +347,7 @@ function idDispositivo() {
 }
 function comprar() {
   if (!TIENDA.compra || TIENDA.compra.indexOf("REEMPLAZA") === 0) { abrirCodigo(tt().sinTienda); return; }
-  try { window.open(TIENDA.compra, "_blank", "noopener"); } catch (e) { location.href = TIENDA.compra; }
+  location.href = TIENDA.compra;
 }
 function abrirCodigo(aviso) {
   const el = document.getElementById("codigo"); if (!el) return;
